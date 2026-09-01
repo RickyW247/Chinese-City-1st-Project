@@ -269,6 +269,19 @@
     mountCube(p, g ? g.textContent.trim() : '');
   });
 
+  /* ---------- the makers' photo ----------
+     Whoever drops the picture in should not have to care whether their
+     phone called it .jpg, .jpeg or .png — try the lot, then own up. */
+  $$('.makers-frame img').forEach(function(img){
+    var alts = (img.getAttribute('data-alts') || '').split(',').filter(Boolean);
+    img.addEventListener('error', function(){
+      if(alts.length){ img.src = alts.shift().trim(); return; }
+      var frame = img.closest('.makers-frame');
+      if(frame) frame.classList.add('is-missing');
+    });
+    if(img.complete && img.naturalWidth === 0){ img.dispatchEvent(new Event('error')); }
+  });
+
   /* ---------- reveal ---------- */
   function activate(el){
     el.classList.add('in-view');
