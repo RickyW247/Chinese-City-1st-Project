@@ -9,7 +9,7 @@
   display:inline-flex; align-items:center; gap:9px; cursor:pointer;
   background:var(--panel); border:1px solid var(--line); color:var(--fog);
   font-family:var(--font-mono); font-size:.62rem; letter-spacing:.16em; text-transform:uppercase;
-  padding:9px 13px; border-radius:2px; transition:color .25s, border-color .25s, background .25s;
+  padding:9px 15px; border-radius:var(--r-pill,999px); transition:color .25s, border-color .25s, background .25s;
 }
 .account-btn:hover{ color:var(--accent); border-color:var(--accent); }
 .account-btn .who{ color:var(--mist); letter-spacing:.1em; text-transform:none; font-size:.7rem; }
@@ -23,11 +23,11 @@
 .account-btn .rank{
   font-size:.5rem; letter-spacing:.14em; color:var(--gold);
   border:1px solid color-mix(in srgb, var(--gold) 45%, transparent);
-  padding:2px 5px; border-radius:2px;
+  padding:2px 7px; border-radius:var(--r-pill,999px);
 }
 .account-menu{
   position:absolute; top:calc(100% + 12px); right:0; min-width:210px; z-index:60;
-  background:rgba(8,11,22,.97); border:1px solid var(--line); backdrop-filter:blur(10px);
+  background:rgba(8,11,22,.97); border:1px solid var(--line); border-radius:var(--r-md,16px); backdrop-filter:blur(10px);
   padding:8px; margin:0; list-style:none;
   opacity:0; visibility:hidden; transform:translateY(-6px);
   transition:opacity .2s ease, transform .2s ease, visibility .2s;
@@ -56,7 +56,7 @@
 .fc-modal.is-open{ opacity:1; visibility:visible; }
 .fc-card{
   width:min(430px,100%); background:var(--ink); border:1px solid var(--line);
-  padding:clamp(24px,4vw,36px); position:relative;
+  border-radius:var(--r-lg,22px); padding:clamp(24px,4vw,36px); position:relative;
   box-shadow:0 40px 120px -40px rgba(0,0,0,.9);
 }
 .fc-card h2{
@@ -68,7 +68,7 @@
 .fc-tabs button{
   flex:1; cursor:pointer; background:transparent; border:1px solid var(--line); color:var(--fog);
   font-family:var(--font-mono); font-size:.58rem; letter-spacing:.14em; text-transform:uppercase;
-  padding:9px; border-radius:2px; transition:.22s;
+  padding:9px 12px; border-radius:var(--r-xs,8px); transition:.22s;
 }
 .fc-tabs button.on{ background:var(--accent); border-color:var(--accent); color:var(--void); }
 .fc-field{ margin-bottom:14px; }
@@ -78,14 +78,14 @@
 }
 .fc-field input, .fc-field select, .fc-field textarea{
   width:100%; background:#080b16; border:1px solid var(--line); color:var(--mist);
-  font-family:var(--font-body); font-size:.92rem; padding:11px 12px; border-radius:2px;
+  font-family:var(--font-body); font-size:.92rem; padding:11px 13px; border-radius:var(--r-sm,12px);
 }
 .fc-field textarea{ font-family:var(--font-mono); font-size:.72rem; line-height:1.6; resize:vertical; min-height:120px; }
 .fc-field input:focus, .fc-field textarea:focus{ outline:none; border-color:var(--accent); }
 .fc-btn{
   width:100%; cursor:pointer; background:var(--accent); border:1px solid var(--accent); color:var(--void);
   font-family:var(--font-mono); font-size:.68rem; letter-spacing:.16em; text-transform:uppercase;
-  padding:13px; border-radius:2px; margin-top:6px; transition:transform .25s ease, box-shadow .25s ease;
+  padding:13px; border-radius:var(--r-pill,999px); margin-top:6px; transition:transform .25s ease, box-shadow .25s ease;
 }
 .fc-btn:hover{ transform:translateY(-2px); box-shadow:0 12px 30px -12px color-mix(in srgb, var(--accent) 70%, transparent); }
 .fc-btn.ghost{ background:transparent; color:var(--fog); border-color:var(--line); }
@@ -125,7 +125,7 @@ body.fc-editing{ padding-bottom:76px; }
 .fc-bar button{
   cursor:pointer; background:transparent; border:1px solid var(--line); color:var(--fog);
   font-family:inherit; font-size:.6rem; letter-spacing:.12em; text-transform:uppercase;
-  padding:8px 12px; border-radius:2px; transition:.22s;
+  padding:8px 14px; border-radius:var(--r-pill,999px); transition:.22s;
 }
 .fc-bar button:hover{ color:var(--mist); border-color:var(--fog); }
 .fc-bar button.primary{ background:var(--accent); border-color:var(--accent); color:var(--void); }
@@ -135,7 +135,7 @@ body.fc-editing{ padding-bottom:76px; }
 /* ---------- editable affordances ---------- */
 body.fc-editing [data-fc-edit]{
   outline:1px dashed color-mix(in srgb, var(--accent) 40%, transparent);
-  outline-offset:3px; border-radius:2px; transition:outline-color .2s ease, background .2s ease;
+  outline-offset:3px; border-radius:var(--r-sm,12px); transition:outline-color .2s ease, background .2s ease;
 }
 body.fc-editing [data-fc-edit]:hover{ outline-color:var(--accent); background:color-mix(in srgb, var(--accent) 7%, transparent); }
 body.fc-editing [data-fc-edit]:focus{
@@ -151,7 +151,7 @@ body.fc-editing .fc-host{ position:relative; outline:1px dotted color-mix(in srg
 .fc-item{ position:relative; }
 .fc-item:hover > .fc-tools, .fc-tools:hover{ opacity:1; }
 .fc-tools button{
-  cursor:pointer; width:24px; height:24px; padding:0; border-radius:2px;
+  cursor:pointer; width:24px; height:24px; padding:0; border-radius:var(--r-xs,8px);
   background:rgba(6,8,17,.94); border:1px solid var(--line); color:var(--fog);
   font-family:var(--font-mono); font-size:.68rem; line-height:1;
 }
@@ -161,13 +161,13 @@ body.fc-editing .fc-host{ position:relative; outline:1px dotted color-mix(in srg
   display:block; width:100%; cursor:pointer; margin-top:10px;
   background:transparent; border:1px dashed color-mix(in srgb, var(--accent) 45%, transparent);
   color:var(--accent); font-family:var(--font-mono); font-size:.58rem; letter-spacing:.16em;
-  text-transform:uppercase; padding:11px; border-radius:2px; transition:.22s;
+  text-transform:uppercase; padding:11px 14px; border-radius:var(--r-pill,999px); transition:.22s;
 }
 .fc-add:hover{ background:color-mix(in srgb, var(--accent) 12%, transparent); }
 
 /* ---------- admin panel ---------- */
 .fc-panel .fc-card{ width:min(620px,100%); max-height:86vh; overflow:auto; }
-.fc-list{ list-style:none; margin:0 0 16px; padding:0; border:1px solid var(--line); }
+.fc-list{ list-style:none; margin:0 0 16px; padding:0; border:1px solid var(--line); border-radius:var(--r-sm,12px); overflow:hidden; }
 .fc-list li{
   display:flex; align-items:center; gap:10px; padding:11px 12px; border-bottom:1px solid var(--line);
   font-family:var(--font-mono); font-size:.66rem; letter-spacing:.06em; color:var(--mist);
@@ -179,7 +179,7 @@ body.fc-editing .fc-host{ position:relative; outline:1px dotted color-mix(in srg
 .fc-list button{
   cursor:pointer; background:transparent; border:1px solid var(--line); color:var(--fog);
   font-family:inherit; font-size:.52rem; letter-spacing:.12em; text-transform:uppercase;
-  padding:5px 8px; border-radius:2px;
+  padding:5px 10px; border-radius:var(--r-pill,999px);
 }
 .fc-list button:hover{ color:var(--mist); border-color:var(--fog); }
 .fc-section-title{
