@@ -319,36 +319,29 @@
      THE DRAGON — a swirling helix down the whole page
      ============================================================ */
   var svg = $('#dragon');
-  var dgHalo, dgBody, dgScales, dgFins, dgLegs, dgHead, dgClipRect;
   var DW = 0, DH = 0, turns = 4, N = 220, phase = 0;
-  var samples = [];
 
-  function dragonInit(){
-    if(!svg) return;
-    var a = cssVar('--accent', '#4de8ff');
-    var b = cssVar('--accent-2', '#9a6bff');
-    svg.innerHTML =
-      '<defs>' +
-        '<linearGradient id="dgGrad" x1="0" y1="0" x2="0" y2="1">' +
-          '<stop offset="0" stop-color="' + a + '"/>' +
-          '<stop offset=".45" stop-color="' + b + '"/>' +
-          '<stop offset="1" stop-color="' + a + '"/>' +
-        '</linearGradient>' +
-        '<clipPath id="dgClip"><rect id="dgClipRect" x="-200" y="0" width="4000" height="0"/></clipPath>' +
-      '</defs>' +
-      '<g clip-path="url(#dgClip)" shape-rendering="optimizeSpeed">' +
-        // soft outer halo — cheaper than a CSS filter over a full-page layer
-        '<path id="dgHalo" fill="none" stroke="url(#dgGrad)" stroke-width="16" stroke-opacity=".16" stroke-linejoin="round"/>' +
-        '<path id="dgFins" fill="url(#dgGrad)" opacity=".42"/>' +
-        '<path id="dgBody" fill="url(#dgGrad)" opacity=".46" stroke="' + a + '" stroke-opacity=".55" stroke-width="1.2"/>' +
-        '<path id="dgScales" fill="none" stroke="#ffffff" stroke-opacity=".2" stroke-width=".9"/>' +
-        '<path id="dgLegs" fill="none" stroke="' + a + '" stroke-width="2.4" stroke-linecap="round" opacity=".5"/>' +
-      '</g>' +
-      '<g id="dgHead"></g>';
-    dgHalo = $("#dgHalo"); dgBody = $("#dgBody"); dgScales = $('#dgScales'); dgFins = $('#dgFins');
-    dgLegs = $('#dgLegs'); dgHead = $('#dgHead'); dgClipRect = $('#dgClipRect');
+  /* The flight. One lead dragon down the middle, and a smaller pair riding
+     wider, out of step and out of phase with it, so no screen of the page
+     ever shows a single lonely coil. Each entry is a whole dragon:
+       hue/hue2  the two colours of its gradient (CSS custom properties)
+       amp       how far it swings from its own centre line
+       turnsK    coils per page, relative to the lead
+       girth     body thickness, and with it head size and limb reach
+       off       centre line, as a fraction of the viewport off middle
+       dir       1 coils one way, -1 the other
+       lag       phase offset, so the coils never line up
+       at        where its head rides on screen, 0 top … 1 bottom
+       fade      layer opacity — the small ones sit further back
+       drift     how fast it swims when the page is still */
+  var FLIGHT = [
+    { key:'lead',  hue:'--accent',  hue2:'--accent-2', amp:1,   turnsK:1,    girth:1,   off:0,    dir:1,  lag:0,   at:.5,  fade:1,   drift:1 },
+    { key:'jade',  hue:'--jade',    hue2:'--accent',   amp:.58, turnsK:1.55, girth:.54, off:-.27, dir:-1, lag:2.1, at:.24, fade:.58, drift:1.5 },
+    { key:'ember', hue:'--crimson', hue2:'--gold',     amp:.46, turnsK:1.3,  girth:.46, off:.29,  dir:1,  lag:4.2, at:.78, fade:.5,  drift:.72 }
+  ];
 
-    dgHead.innerHTML =
+  function headMarkup(a, b){
+    return (
       // mane
       '<path d="M-7,-8 L-17,-14 L-11,-5 L-20,-3 L-10,1 L-18,9 L-7,8 Z" fill="' + b + '" opacity=".75"/>' +
       // skull
@@ -363,36 +356,78 @@
       '<path d="M17,3 C24,4 30,9 31,17" fill="none" stroke="' + b + '" stroke-width="1.6" stroke-linecap="round" opacity=".85"/>' +
       // eye
       '<circle cx="6" cy="-3" r="2.2" fill="#05060d"/>' +
-      '<circle cx="6" cy="-3" r="1" fill="#ffffff"/>';
+      '<circle cx="6" cy="-3" r="1" fill="#ffffff"/>'
+    );
   }
 
-  function geometry(ph){
-    samples = [];
-    var cxp = DW / 2;
-    var amp = Math.min(DW * 0.34, 330);
+  function dragonInit(){
+    if(!svg) return;
+    var defs = '', layers = '', heads = '';
+    FLIGHT.forEach(function(d){
+      d.a = cssVar(d.hue, '#4de8ff');
+      d.b = cssVar(d.hue2, '#9a6bff');
+      d.samples = [];
+      var grad = 'url(#dgGrad-' + d.key + ')';
+      defs +=
+        '<linearGradient id="dgGrad-' + d.key + '" x1="0" y1="0" x2="0" y2="1">' +
+          '<stop offset="0" stop-color="' + d.a + '"/>' +
+          '<stop offset=".45" stop-color="' + d.b + '"/>' +
+          '<stop offset="1" stop-color="' + d.a + '"/>' +
+        '</linearGradient>' +
+        '<clipPath id="dgClip-' + d.key + '"><rect id="dgClipRect-' + d.key + '" x="-200" y="0" width="4000" height="0"/></clipPath>';
+      layers +=
+        '<g clip-path="url(#dgClip-' + d.key + ')" opacity="' + d.fade + '" shape-rendering="optimizeSpeed">' +
+          // soft outer halo — cheaper than a CSS filter over a full-page layer
+          '<path id="dgHalo-' + d.key + '" fill="none" stroke="' + grad + '" stroke-width="' + (16 * d.girth).toFixed(1) + '" stroke-opacity=".16" stroke-linejoin="round"/>' +
+          '<path id="dgFins-' + d.key + '" fill="' + grad + '" opacity=".42"/>' +
+          '<path id="dgBody-' + d.key + '" fill="' + grad + '" opacity=".46" stroke="' + d.a + '" stroke-opacity=".55" stroke-width="1.2"/>' +
+          '<path id="dgScales-' + d.key + '" fill="none" stroke="#ffffff" stroke-opacity=".2" stroke-width=".9"/>' +
+          '<path id="dgLegs-' + d.key + '" fill="none" stroke="' + d.a + '" stroke-width="' + (2.4 * d.girth).toFixed(1) + '" stroke-linecap="round" opacity=".5"/>' +
+        '</g>';
+      heads += '<g class="dg-head" id="dgHead-' + d.key + '" opacity="' + d.fade + '" style="--dg:' + d.a + '"></g>';
+    });
+    svg.innerHTML = '<defs>' + defs + '</defs>' + layers + heads;
+    FLIGHT.forEach(function(d){
+      d.halo   = $('#dgHalo-' + d.key);
+      d.body   = $('#dgBody-' + d.key);
+      d.scales = $('#dgScales-' + d.key);
+      d.fins   = $('#dgFins-' + d.key);
+      d.legs   = $('#dgLegs-' + d.key);
+      d.head   = $('#dgHead-' + d.key);
+      d.clip   = $('#dgClipRect-' + d.key);
+      d.head.innerHTML = headMarkup(d.a, d.b);
+    });
+  }
+
+  function geometry(d, ph){
+    var pts = [];
+    var cxp = DW * (0.5 + d.off);
+    var amp = Math.min(DW * 0.34, 330) * d.amp;
+    var coils = turns * d.turnsK;
     for(var i = 0; i <= N; i++){
       var t = i / N;
-      var ang = t * turns * Math.PI * 2 + ph;
+      var ang = (t * coils * Math.PI * 2 + ph * d.drift + d.lag) * d.dir;
       var taper = Math.sin(Math.min(t * 5, 1) * Math.PI / 2) * Math.sin(Math.min((1 - t) * 7, 1) * Math.PI / 2);
       var A = amp * (0.42 + 0.58 * taper);
       var depth = Math.cos(ang);                        // +1 near, −1 far
       var near = 0.45 + 0.55 * (depth * 0.5 + 0.5);
-      samples.push({
+      pts.push({
         x: cxp + Math.sin(ang) * A,
         y: t * DH,
-        w: (2.2 + 10.5 * taper) * near,
+        w: (2.2 + 10.5 * taper) * near * d.girth,
         near: near,
         depth: depth
       });
     }
     // tangents and normals
     for(var j = 0; j <= N; j++){
-      var p0 = samples[Math.max(0, j - 1)], p1 = samples[Math.min(N, j + 1)];
+      var p0 = pts[Math.max(0, j - 1)], p1 = pts[Math.min(N, j + 1)];
       var dx = p1.x - p0.x, dy = p1.y - p0.y;
       var len = Math.hypot(dx, dy) || 1;
-      samples[j].tx = dx / len; samples[j].ty = dy / len;
-      samples[j].nx = -dy / len; samples[j].ny = dx / len;
+      pts[j].tx = dx / len; pts[j].ty = dy / len;
+      pts[j].nx = -dy / len; pts[j].ny = dx / len;
     }
+    d.samples = pts;
 
     // only build path data for the slice of the coil that is on screen —
     // the SVG layer is one viewport tall, so the rest would never be painted
@@ -402,16 +437,16 @@
 
     var left = '', right = [], scales = '', fins = '', legs = '';
     for(var k = kFrom; k <= kTo; k++){
-      var s = samples[k];
+      var s = pts[k];
       var lx = s.x + s.nx * s.w, ly = s.y + s.ny * s.w;
       var rx = s.x - s.nx * s.w, ry = s.y - s.ny * s.w;
       left += (k === kFrom ? 'M' : 'L') + lx.toFixed(1) + ' ' + ly.toFixed(1) + ' ';
       right.push('L' + rx.toFixed(1) + ' ' + ry.toFixed(1) + ' ');
-      if(k % 3 === 0 && s.w > 2){
+      if(k % 3 === 0 && s.w > 2 * d.girth){
         scales += 'M' + lx.toFixed(1) + ' ' + ly.toFixed(1) + 'L' + rx.toFixed(1) + ' ' + ry.toFixed(1) + ' ';
       }
       // dorsal fin spikes on the near side of the coil
-      if(k % 3 === 0 && s.depth > -0.35 && s.w > 3){
+      if(k % 3 === 0 && s.depth > -0.35 && s.w > 3 * d.girth){
         var f = s.w * 0.85;
         var fx = s.x + s.nx * (s.w + f), fy = s.y + s.ny * (s.w + f);
         var ax = s.x + s.nx * s.w - s.tx * s.w * 0.9, ay = s.y + s.ny * s.w - s.ty * s.w * 0.9;
@@ -425,8 +460,8 @@
     [0.16, 0.3, 0.44, 0.58, 0.72, 0.86].forEach(function(at){
       var ki = Math.round(at * N);
       if(ki < kFrom || ki > kTo) return;
-      var s = samples[ki];
-      if(!s || s.w < 4) return;
+      var s = pts[ki];
+      if(!s || s.w < 4 * d.girth) return;
       var reach = s.w * 3.4, side = s.depth >= 0 ? 1 : -1;
       var hx = s.x + s.nx * s.w * side, hy = s.y + s.ny * s.w * side;
       var kx = hx + (s.nx * reach * side) + s.tx * reach * 0.5;
@@ -436,17 +471,25 @@
       legs += 'M' + hx.toFixed(1) + ' ' + hy.toFixed(1) +
               'Q' + kx.toFixed(1) + ' ' + ky.toFixed(1) + ' ' + tx.toFixed(1) + ' ' + ty.toFixed(1) + ' ';
       // claws
-      legs += 'M' + tx.toFixed(1) + ' ' + ty.toFixed(1) + 'l' + (s.tx * 7).toFixed(1) + ' ' + (s.ty * 7).toFixed(1) + ' ';
-      legs += 'M' + tx.toFixed(1) + ' ' + ty.toFixed(1) + 'l' + (s.nx * 6 * side).toFixed(1) + ' ' + (s.ny * 6 * side).toFixed(1) + ' ';
+      legs += 'M' + tx.toFixed(1) + ' ' + ty.toFixed(1) + 'l' + (s.tx * 7 * d.girth).toFixed(1) + ' ' + (s.ty * 7 * d.girth).toFixed(1) + ' ';
+      legs += 'M' + tx.toFixed(1) + ' ' + ty.toFixed(1) + 'l' + (s.nx * 6 * d.girth * side).toFixed(1) + ' ' + (s.ny * 6 * d.girth * side).toFixed(1) + ' ';
     });
 
     right.reverse();
     var bodyD = left + right.join("") + "Z";
-    dgBody.setAttribute("d", bodyD);
-    dgHalo.setAttribute("d", bodyD);
-    dgScales.setAttribute('d', scales);
-    dgFins.setAttribute('d', fins);
-    dgLegs.setAttribute('d', legs);
+    d.body.setAttribute("d", bodyD);
+    d.halo.setAttribute("d", bodyD);
+    d.scales.setAttribute('d', scales);
+    d.fins.setAttribute('d', fins);
+    d.legs.setAttribute('d', legs);
+  }
+
+  /* one pass over the whole flight */
+  function flight(ph){
+    for(var i = 0; i < FLIGHT.length; i++){ geometry(FLIGHT[i], ph); positionHead(FLIGHT[i]); }
+  }
+  function flightHeads(){
+    for(var i = 0; i < FLIGHT.length; i++){ positionHead(FLIGHT[i]); }
   }
 
   function buildDragon(){
@@ -456,12 +499,11 @@
     // layout can still be zero on the first frame; try again rather than
     // baking a 0×0 viewBox that nothing would ever correct
     if(DW < 2 || DH < 2){ requestAnimationFrame(buildDragon); return; }
-    if(!dgBody) dragonInit();
+    if(!FLIGHT[0].body) dragonInit();
     turns = Math.max(3, Math.min(11, DH / 680));
     N = Math.max(150, Math.min(260, Math.round(DH / 22)));
     panViewBox();
-    geometry(phase);
-    positionHead();
+    flight(phase);
   }
 
   /* the layer stays one screen tall; the viewBox slides down with the scroll */
@@ -469,27 +511,26 @@
     svg.setAttribute('viewBox', '0 ' + Math.round(scrollY) + ' ' + DW + ' ' + innerHeight);
   }
 
-  /* the head flies at mid-screen, the body trails up the page behind it */
-  function positionHead(){
-    if(!svg || !samples.length) return;
-    var headY = scrollY + innerHeight * 0.5;
+  /* each head flies at its own height on screen, its body trailing up behind it */
+  function positionHead(d){
+    if(!svg || !d.samples.length) return;
+    var headY = scrollY + innerHeight * d.at;
     var f = Math.max(0, Math.min(1, headY / DH));
-    var s = samples[Math.min(N, Math.round(f * N))];
+    var s = d.samples[Math.min(N, Math.round(f * N))];
     var ang = Math.atan2(s.ty, s.tx) * 180 / Math.PI;
-    var scale = 0.6 + 1.1 * s.near * (0.4 + 0.6 * (s.w / 13));
-    dgHead.setAttribute('transform',
+    var scale = (0.6 + 1.1 * s.near * (0.4 + 0.6 * (s.w / 13))) * (0.45 + 0.55 * d.girth);
+    d.head.setAttribute('transform',
       'translate(' + s.x.toFixed(1) + ',' + s.y.toFixed(1) + ') rotate(' + ang.toFixed(1) + ') scale(' + scale.toFixed(2) + ')');
-    dgClipRect.setAttribute('height', Math.max(0, s.y).toFixed(1));
+    d.clip.setAttribute('height', Math.max(0, s.y).toFixed(1));
   }
 
-  /* slow flight: the coil keeps drifting even when the page is still */
+  /* slow flight: the coils keep drifting even when the page is still */
   var driftLast = 0;
   function driftLoop(now){
     if(now - driftLast > 62){
       driftLast = now;
       phase += 0.016;
-      geometry(phase);
-      positionHead();
+      flight(phase);
     }
     requestAnimationFrame(driftLoop);
   }
@@ -502,8 +543,8 @@
     lastFrac = max > 0 ? Math.min(1, Math.max(0, scrollY / max)) : 0;
     if(svg){
       panViewBox();
-      if(reduceMotion || coarse){ geometry(phase); }   // no drift loop running
-      positionHead();
+      if(reduceMotion || coarse){ flight(phase); }   // no drift loop running
+      else { flightHeads(); }
     }
     if(!reduceMotion){
       if(heroMedia && scrollY < innerHeight * 1.3){
