@@ -23,6 +23,7 @@
   --font-hanzi:'Ma Shan Zheng',serif;
   --font-body:'Manrope',system-ui,sans-serif;
   --font-mono:'JetBrains Mono',ui-monospace,monospace;
+  --font-nav:'Chakra Petch','Unbounded',system-ui,sans-serif;
 }
 
 *{box-sizing:border-box;}
@@ -106,7 +107,7 @@ nav.topbar{
 }
 .brand{ display:flex; align-items:center; gap:12px; text-decoration:none; white-space:nowrap; flex:0 0 auto; }
 @media (max-width:420px){ .brand-word{ display:none; } }
-.brand-word{ font-family:var(--font-mono); font-size:.7rem; letter-spacing:.28em; color:var(--mist); }
+.brand-word{ font-family:var(--font-nav); font-weight:600; font-size:.76rem; letter-spacing:.3em; color:var(--mist); }
 .brand-name{ font-family:var(--font-hanzi); font-size:1.35rem; color:var(--crimson); line-height:1; text-shadow:0 0 22px rgba(255,61,100,.45); }
 
 /* --- the logo: a coiled Chinese dragon --- */
@@ -135,7 +136,7 @@ nav.topbar{
 }
 .nav-right{ display:flex; align-items:center; gap:clamp(14px,2.4vw,30px); }
 .nav-links{ display:flex; align-items:center; gap:clamp(14px,2.4vw,28px); list-style:none; margin:0; padding:0; }
-.nav-links a{ text-decoration:none; font-family:var(--font-mono); font-size:.68rem; letter-spacing:.2em; color:var(--fog); transition:color .25s; white-space:nowrap; }
+.nav-links a{ text-decoration:none; font-family:var(--font-nav); font-weight:600; font-size:.78rem; letter-spacing:.2em; text-transform:uppercase; color:var(--fog); transition:color .25s; white-space:nowrap; }
 .nav-links a:hover, .nav-links a.active{ color:var(--accent); }
 /* below this width only the Quarters menu survives in the top bar */
 @media (max-width:1040px){ .nav-links > li:not(.nav-menu){ display:none; } }
@@ -145,7 +146,7 @@ nav.topbar{
 .nav-menu{ position:relative; }
 .nav-menu > button{
   cursor:pointer; background:transparent; border:0; padding:0; display:inline-flex; align-items:center; gap:7px;
-  font-family:var(--font-mono); font-size:.68rem; letter-spacing:.2em; color:var(--fog); text-transform:uppercase;
+  font-family:var(--font-nav); font-weight:600; font-size:.78rem; letter-spacing:.2em; color:var(--fog); text-transform:uppercase;
   transition:color .25s;
 }
 .nav-menu > button:hover, .nav-menu.is-open > button, .nav-menu.is-current > button{ color:var(--accent); }
@@ -159,7 +160,7 @@ nav.topbar{
 .nav-menu.is-open .nav-drop{ opacity:1; visibility:visible; transform:translateX(-50%) translateY(0); }
 .nav-drop a{
   display:flex; align-items:center; gap:10px; padding:9px 10px; text-decoration:none;
-  font-family:var(--font-mono); font-size:.64rem; letter-spacing:.12em; color:var(--fog);
+  font-family:var(--font-nav); font-weight:500; font-size:.74rem; letter-spacing:.14em; color:var(--fog);
   transition:background .2s ease, color .2s ease;
 }
 .nav-drop a:hover, .nav-drop a.active{ background:var(--ink-2); color:var(--mist); }
@@ -169,7 +170,7 @@ nav.topbar{
 .audio-btn{
   display:inline-flex; align-items:center; gap:10px; cursor:pointer;
   background:var(--panel); border:1px solid var(--line); color:var(--fog);
-  font-family:var(--font-mono); font-size:.62rem; letter-spacing:.18em; text-transform:uppercase;
+  font-family:var(--font-nav); font-weight:600; font-size:.7rem; letter-spacing:.18em; text-transform:uppercase;
   padding:9px 13px; border-radius:2px; transition:color .25s, border-color .25s, background .25s;
 }
 .audio-btn:hover{ color:var(--accent); border-color:var(--accent); }
