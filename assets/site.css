@@ -696,6 +696,30 @@ footer nav.foot-links{ display:flex; flex-wrap:wrap; gap:8px 18px; }
 footer nav.foot-links a{ text-decoration:none; color:var(--fog); transition:color .25s; }
 footer nav.foot-links a:hover{ color:var(--accent); }
 
+/* the three people who actually built it, as opposed to the ones who
+   supposedly live in it */
+.credits{ display:flex; align-items:center; gap:12px 14px; flex-wrap:wrap; flex-basis:100%; order:3;
+  border-top:1px solid var(--line); padding-top:18px; margin-top:4px; }
+.credits-mark{
+  font-family:var(--font-hanzi); font-size:1.5rem; line-height:1;
+  color:var(--accent); text-shadow:0 0 18px color-mix(in srgb, var(--accent) 60%, transparent);
+}
+.credits-lede{ letter-spacing:.2em; text-transform:uppercase; color:var(--fog); }
+.credits-names{
+  display:flex; flex-wrap:wrap; gap:6px 14px; list-style:none; margin:0; padding:0;
+}
+.credits-names li{
+  position:relative; color:var(--mist); letter-spacing:.1em;
+  font-family:var(--font-nav); font-weight:600; font-size:.74rem;
+  transition:color .3s ease, text-shadow .3s ease;
+}
+.credits-names li + li::before{
+  content:"·"; position:absolute; left:-9px; color:var(--fog);
+}
+.credits-names li:hover{
+  color:var(--accent); text-shadow:0 0 16px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
 /* ============================================================
    TEXT ANIMATION
    Words/characters are wrapped by site.js into
