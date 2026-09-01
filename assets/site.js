@@ -210,9 +210,9 @@
   var track = $('#tickerTrack');
   if(track){
     var lines = window.FC_TICKER || [
-      '<em>灯</em> LANTERN GRID NOMINAL · 41,208 LIT',
-      'WEATHER: <b>LIGHT RAIN</b> · VISIBILITY 18KM',
-      '<em>龙</em> DRAGON BROADCAST — UNINTERRUPTED SINCE 2061'
+      '<em>灯</em> LANTERN GRID STEADY · 41,208 LIT',
+      'WEATHER: <b>LIGHT RAIN</b> · VISIBILITY 18KM · BRING THE GOOD COAT',
+      '<em>龙</em> DRAGON BROADCAST — UNBROKEN SINCE 2061'
     ];
     var row = lines.map(function(t){ return '<span>' + t + '</span>'; }).join('');
     track.innerHTML = row + row;
@@ -336,6 +336,7 @@
   var LX = -0.55, LY = -0.84;         // light, from the upper left
   var GIRTH = 1;                      // body scale, from the width of the page
   var headBand = -1;                  // which depth band the head is painted in
+  var neckBand = 0;                   // frontmost band the neck itself lands in
   var band = [];                      // one set of paths per depth band
   var dgHead;
 
@@ -453,6 +454,7 @@
       var g = $('#dgB' + j);
       band.push({
         group: g,
+        appendHead: function(h){ if(h.parentNode !== this.group) this.group.appendChild(h); },
         ao:    g.querySelector('.dgAo'),
         body:  g.querySelector('.dgBody'),
         sh:    g.querySelector('.dgSh'),
@@ -517,9 +519,12 @@
     var kHead = Math.min(N, Math.round(headFrac() * N));
     kTo = Math.min(kTo, kHead);
     var NECK = 5;
+    neckBand = 0;
     for(var n2 = Math.max(0, kHead - NECK); n2 <= kHead && n2 <= N; n2++){
       var g2 = (kHead - n2) / NECK;                   // 0 at the head, 1 back along the body
       samples[n2].w *= 0.55 + 0.45 * g2;
+      var nb = Math.round((samples[n2].depth + 1) / 2 * (BANDS - 1));
+      if(nb > neckBand) neckBand = nb;
     }
 
     var ao = [], body = [], hi = [], sh = [], plate = [], spine = [], ring = [], rim = [], limb = [];
@@ -691,15 +696,27 @@
     var girth = lerp(s0.w0 || s0.w, s1.w0 || s1.w);
     var ang = Math.atan2(ty, tx) * 180 / Math.PI;
     var scale = Math.max(1.2, Math.min(3.4, girth / 12));
+    // an animal doesn't swim on its back: when the coil carries the head off
+    // to the left, mirror it along its own spine instead of letting the
+    // rotation roll it over, so the mane and the eye stay on top
+    var roll = (ang > 90 || ang < -90) ? -1 : 1;
     dgHead.setAttribute('transform',
-      'translate(' + x.toFixed(1) + ',' + y.toFixed(1) + ') rotate(' + ang.toFixed(1) + ') scale(' + scale.toFixed(2) + ')');
+      'translate(' + x.toFixed(1) + ',' + y.toFixed(1) + ') rotate(' + ang.toFixed(1) + ')' +
+      ' scale(' + scale.toFixed(2) + ',' + (scale * roll).toFixed(2) + ')');
 
-    // paint it inside its own depth band, so the coils in front of it hide it
+    // Order it against the neck, not against its own depth. Rounding the two
+    // separately let the neck cross in front of the head for a frame at a
+    // time, which read as a flicker. The head sits in the frontmost band the
+    // neck touches — appended last, so it is always in front of the neck —
+    // while any coil nearer than that still paints over it.
     var near = (depth + 1) / 2;
     var bi = Math.max(0, Math.min(BANDS - 1, Math.round(near * (BANDS - 1))));
-    if(bi !== headBand){ headBand = bi; band[bi].group.appendChild(dgHead); }
-    // and let it sink into the haze as it goes round the back
-    dgHead.setAttribute('opacity', (0.12 + 0.88 * near * near).toFixed(3));
+    if(neckBand > bi) bi = neckBand;
+    if(bi !== headBand){ headBand = bi; }
+    band[bi].appendHead(dgHead);
+    // it dims round the back, but never all the way out — the coils in front
+    // of it are what hide it
+    dgHead.setAttribute('opacity', (0.5 + 0.5 * near).toFixed(3));
   }
 
   /* slow flight: the coil keeps drifting even when the page is still */
