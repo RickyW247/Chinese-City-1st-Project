@@ -777,16 +777,26 @@ footer nav.foot-links a:hover{ color:var(--accent); }
   display:flex; flex-wrap:wrap; gap:6px 14px; list-style:none; margin:0; padding:0;
 }
 .credits-names li{
-  position:relative; color:var(--mist); letter-spacing:.1em;
+  position:relative; letter-spacing:.1em;
   font-family:var(--font-nav); font-weight:600; font-size:.74rem;
-  transition:color .3s ease, text-shadow .3s ease;
 }
 .credits-names li + li::before{
   content:"·"; position:absolute; left:-9px; color:var(--fog);
 }
-.credits-names li:hover{
+/* each name is a way through to the page about the three of us */
+.credits-names a{
+  position:relative; display:inline-block; color:var(--mist); text-decoration:none;
+  transition:color .3s ease, text-shadow .3s ease;
+}
+.credits-names a::after{
+  content:""; position:absolute; left:0; right:100%; bottom:-4px; height:1px;
+  background:var(--accent); box-shadow:0 0 10px var(--accent);
+  transition:right .35s cubic-bezier(.2,.8,.2,1);
+}
+.credits-names a:hover, .credits-names a:focus-visible{
   color:var(--accent); text-shadow:0 0 16px color-mix(in srgb, var(--accent) 55%, transparent);
 }
+.credits-names a:hover::after, .credits-names a:focus-visible::after{ right:0; }
 
 /* ============================================================
    TEXT ANIMATION
