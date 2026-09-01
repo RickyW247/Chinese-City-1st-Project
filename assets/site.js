@@ -218,14 +218,27 @@
     track.innerHTML = row + row;
   }
 
-  /* ---------- card spotlight ---------- */
-  $$('.card').forEach(function(c){
-    c.addEventListener('pointermove', function(e){
-      var r = c.getBoundingClientRect();
-      c.style.setProperty('--mx', (e.clientX - r.left) + 'px');
-      c.style.setProperty('--my', (e.clientY - r.top) + 'px');
+  /* ---------- card spotlight, and the tilt that goes with it ---------- */
+  /* The pointer drives both the highlight and a small rotation, so a card
+     reads as a panel you are leaning rather than a rectangle lighting up. */
+  function tiltable(el, maxDeg){
+    if(reduceMotion || coarse) return;
+    el.addEventListener('pointermove', function(e){
+      var r = el.getBoundingClientRect();
+      var px = (e.clientX - r.left) / r.width;          // 0 … 1
+      var py = (e.clientY - r.top) / r.height;
+      el.style.setProperty('--mx', (e.clientX - r.left) + 'px');
+      el.style.setProperty('--my', (e.clientY - r.top) + 'px');
+      el.style.setProperty('--ry', ((px - .5) * 2 * maxDeg).toFixed(2) + 'deg');
+      el.style.setProperty('--rx', ((.5 - py) * 2 * maxDeg).toFixed(2) + 'deg');
     });
-  });
+    el.addEventListener('pointerleave', function(){
+      el.style.setProperty('--rx', '0deg');
+      el.style.setProperty('--ry', '0deg');
+    });
+  }
+  $$('.card').forEach(function(c){ tiltable(c, 7); });
+  $$('.pn').forEach(function(p){ tiltable(p, 4.5); });
 
   /* ---------- a spinning 3D cube on every clickable quarter ---------- */
   function mountCube(host, glyph){
@@ -704,14 +717,26 @@
       'translate(' + x.toFixed(1) + ',' + y.toFixed(1) + ') rotate(' + ang.toFixed(1) + ')' +
       ' scale(' + scale.toFixed(2) + ',' + (scale * roll).toFixed(2) + ')');
 
-    // Order it against the neck, not against its own depth. Rounding the two
-    // separately let the neck cross in front of the head for a frame at a
-    // time, which read as a flicker. The head sits in the frontmost band the
-    // neck touches — appended last, so it is always in front of the neck —
-    // while any coil nearer than that still paints over it.
+    // Order it against the neck, not against its own depth. The head has to
+    // beat every band its own artwork overlaps — the mane and horns reach a
+    // long way back along the body, and any of that stretch sitting in a
+    // nearer band was painting over the face. So: walk back along the coil as
+    // far as the head actually covers, and take the frontmost band found.
     var near = (depth + 1) / 2;
-    var bi = Math.max(0, Math.min(BANDS - 1, Math.round(near * (BANDS - 1))));
-    if(neckBand > bi) bi = neckBand;
+    var own = Math.max(0, Math.min(BANDS - 1, Math.round(near * (BANDS - 1))));
+    var bi = neckBand > own ? neckBand : own;
+    var reach = 36 * scale;                        // px of body the head covers
+    var walked = 0, k = i0, prev = s0, steps = 0;
+    while(k > 0 && walked < reach && steps < 48){
+      var q = samples[--k]; steps++;
+      walked += Math.hypot(prev.x - q.x, prev.y - q.y);
+      prev = q;
+      var qb = Math.round((q.depth + 1) / 2 * (BANDS - 1));
+      if(qb > bi) bi = qb;
+    }
+    // but never so far forward that it hops in front of unrelated coils
+    if(bi > own + 3) bi = own + 3;
+    if(bi > BANDS - 1) bi = BANDS - 1;
     if(bi !== headBand){ headBand = bi; }
     band[bi].appendHead(dgHead);
     // it dims round the back, but never all the way out — the coils in front
