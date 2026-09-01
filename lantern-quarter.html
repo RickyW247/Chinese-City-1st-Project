@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lantern Quarter · 未来城</title>
+<meta name="description" content="灯坊 — street level in 未来城. Forty-one thousand lanterns on grid loop 7, and the eleven-year fight to keep them analogue in shape.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;700;800;900&family=Ma+Shan+Zheng&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'><rect width='48' height='48' rx='11' fill='%2305060d'/><path d='M33 15C41 19 43 29 37 35 31 41 19 41 13 35 7 29 9 19 16 16' fill='none' stroke='%234de8ff' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/><path d='M16 16C22 13 29 15 31 21 33 27 29 32 24 31' fill='none' stroke='%234de8ff' stroke-width='3' stroke-linecap='round' opacity='.75'/><path d='M29 10C35 6 43 7 45 12 41 15 34 15 30 13Z' fill='%234de8ff'/><path d='M30 9C28 4 25 2 21 2' fill='none' stroke='%23ff3d64' stroke-width='2.6' stroke-linecap='round'/><path d='M44 12C48 10 49 5 47 2' fill='none' stroke='%23f0b45c' stroke-width='2' stroke-linecap='round'/><circle cx='36' cy='11' r='1.7' fill='%2305060d'/></svg>">
+<link rel="stylesheet" href="assets/site.css">
+<link rel="stylesheet" href="assets/admin.css">
+</head>
+<body data-district="lantern-quarter" style="--accent:#ff3d64; --accent-2:#f0b45c">
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <filter id="glow" x="-200%" y="-200%" width="500%" height="500%">
+    <feGaussianBlur stdDeviation="4" result="blur"/>
+    <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+  </filter>
+</svg>
+
+<div class="loader" id="loader">
+  <span class="lglyph">灯</span>
+  <span class="lmark">Lighting the quarter</span>
+  <div class="lbar"><div class="lfill" id="loaderFill"></div></div>
+</div>
+
+<canvas id="ambient" aria-hidden="true"></canvas>
+<div class="noise" aria-hidden="true"></div>
+<div class="scanlines" aria-hidden="true"></div>
+<div class="cursor-glow" id="cursorGlow" aria-hidden="true"></div>
+<div class="cursor-ring" id="cursorRing" aria-hidden="true"></div>
+<svg id="dragon" aria-hidden="true"><path id="dragonPath"/><g id="dragonHead"></g></svg>
+
+<audio id="track" loop preload="none">
+  <source src="Tobu%20Song%20Copyrighted.mp4" type="audio/mp4">
+</audio>
+
+<nav class="topbar">
+  <a class="brand" href="index.html">
+    <svg class="logo" viewBox="0 0 48 48" aria-hidden="true"><path class="coil" pathLength="150" d="M33 15 C41 19 43 29 37 35 C31 41 19 41 13 35 C7 29 9 19 16 16"/><path class="coil coil-inner" pathLength="150" d="M16 16 C22 13 29 15 31 21 C33 27 29 32 24 31 C20 30 18 26 20 23"/><g class="head"><path class="jaw" d="M29 10 C35 6 43 7 45 12 C41 15 34 15 30 13 Z"/><path class="horn" d="M30 9 C28 4 25 2 21 2"/><path class="horn" d="M34 8 C33 4 31 2 28 1" opacity=".7"/><path class="whisk" d="M44 12 C48 10 49 5 47 2"/><path class="whisk" d="M44 14 C47 17 47 21 45 24"/><circle class="eye" cx="36" cy="11" r="1.5"/></g><circle class="spark" cx="24" cy="24" r="1.6"/></svg>
+    <span class="brand-name">未来城</span>
+    <span class="brand-word">FUTURE&nbsp;CITY</span>
+  </a>
+  <div class="nav-right">
+    <ul class="nav-links">
+      <li class="nav-menu" id="navMenu">
+        <button type="button" aria-expanded="false">Quarters
+          <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M2 4l4 4 4-4"/></svg>
+        </button>
+      </li>
+      <li><a href="#streets">Streets</a></li>
+      <li><a href="#trade">The Trade</a></li>
+      <li><a href="#readout">Readout</a></li>
+      <li><a href="index.html#atlas">The Plate</a></li>
+    </ul>
+    <button class="audio-btn" id="audioBtn" type="button" aria-pressed="false">
+      <span class="eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+      <span id="audioLabel">Sound off</span>
+    </button>
+  </div>
+</nav>
+
+<header class="subhero">
+  <div class="subhero-media">
+    <img src="China%20Futuristic%20City.png" alt="The lantern-hung balcony above 未来城, red silk lanterns burning against the neon skyline." style="--sx:18%; --sy:20%; --sz:1.9">
+  </div>
+  <span class="subhero-glyph" aria-hidden="true">灯</span>
+  <div class="subhero-inner">
+    <p class="crumb"><a href="index.html">未来城</a> <i>/</i> <a href="index.html#districts">Six quarters</a> <i>/</i> <b>01 灯坊</b></p>
+    <h1 class="page-title">Lantern Quarter</h1>
+    <p class="page-tagline">Street level, and the last part of the city that still measures its light in paper rather than lumens. Every lantern here runs on the same grid as the skyline above, and still burns the same red it always has.</p>
+    <div class="page-chips">
+      <span class="chip">Elevation <b>Street · Deck 41</b></span>
+      <span class="chip">Feed <b>Grid loop 7</b></span>
+      <span class="chip">Lit tonight <b>41,208</b></span>
+      <span class="chip">Curfew <b>Lifts 05:00</b></span>
+    </div>
+  </div>
+</header>
+
+<div class="ticker" aria-hidden="true"><div class="ticker-track" id="tickerTrack"></div></div>
+
+<section class="sec">
+  <div class="wrap split-cols">
+    <div data-reveal>
+      <div class="mark-hanzi">灯火不灭<small>The light does not go out</small></div>
+    </div>
+    <div data-reveal>
+      <span class="eyebrow">The quarter</span>
+      <p class="statement">The Quarter lost the argument about power in 2049 and won every argument about shape since.</p>
+      <p class="body-copy">When the valley floor was rewired, the utility offered the Lantern Quarter a subsidy to convert: sealed panels, uniform output, a colour temperature chosen in a room nine hundred kilometres away. The Quarter took the current and refused the fixture. <b>Silk over a lattice frame, filament inside</b> — the same silhouette that hung here in the Ming, drawing off the same feed as the freight lanes overhead.</p>
+      <p class="body-copy">It took eleven years of hearings. The compromise, written into the district code and still posted at the head of Lantern Street, is one line long: <em>the grid may decide what the light costs; the Quarter decides what it looks like.</em></p>
+      <p class="body-copy">The result is a district that is entirely modern and looks nothing like it. Forty-one thousand lanterns, each one addressable, each one made by hand within four streets of where it hangs.</p>
+    </div>
+  </div>
+</section>
+
+<section class="sec bordered" id="streets">
+  <div class="wrap">
+    <div data-reveal>
+      <span class="eyebrow">五条街 · five streets</span>
+      <h2 class="sec-title">What is on the ground here</h2>
+      <p class="sec-lede">The Quarter is small enough to cross in twenty minutes and dense enough that nobody does it in under an hour.</p>
+    </div>
+    <div class="rows" data-reveal>
+      <div class="row">
+        <span class="row-num">01</span>
+        <div><h3 class="row-title">Lantern Street</h3><span class="row-sub">Main run · 900 m</span></div>
+        <p class="row-copy">The spine. Nine hundred metres of overhead line strung four deep, dense enough that the street has no true night — only a red one. The district code is nailed to a post at the north end, laminated, faded, never replaced.</p>
+      </div>
+      <div class="row">
+        <span class="row-num">02</span>
+        <div><h3 class="row-title">Paper Row</h3><span class="row-sub">Workshops · 112 registered</span></div>
+        <p class="row-copy">Where the frames are cut and the silk is stretched. A hundred and twelve workshops, most of them one room and one family. <em>Apprenticeship is still seven years</em>, which nobody has managed to shorten, because the last two are spent learning what to do when the silk is wrong.</p>
+      </div>
+      <div class="row">
+        <span class="row-num">03</span>
+        <div><h3 class="row-title">The Filament Stair</h3><span class="row-sub">Grid access · loop 7</span></div>
+        <p class="row-copy">A public stair with the district's junction boxes bolted along the wall, unhidden on purpose. Children are taught to read the load meters here before they are taught to hang a lantern. The stair smells of hot dust and wet stone in equal measure.</p>
+      </div>
+      <div class="row">
+        <span class="row-num">04</span>
+        <div><h3 class="row-title">Wet Stone Market</h3><span class="row-sub">Open 17:00 – tide</span></div>
+        <p class="row-copy">Named for the flagstones, which have not been dry since the falls were rerouted in ’68. Food, mostly. The reflection off the wet stone doubles the lantern count, and the Quarter counts it in the official figure, which the utility has stopped contesting.</p>
+      </div>
+      <div class="row">
+        <span class="row-num">05</span>
+        <div><h3 class="row-title">The Hanging Alley</h3><span class="row-sub">Memorial · unlit one night a year</span></div>
+        <p class="row-copy">Sixty metres wide at the top and two at the bottom, roofed entirely in lanterns. On the anniversary of the flood of ’61 it is the only street in 未来城 that goes dark, for one hour, by choice.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="sec bordered" id="trade">
+  <div class="wrap">
+    <div data-reveal>
+      <span class="eyebrow">看细节 · in the frame</span>
+      <h2 class="sec-title">Three details from the plate</h2>
+      <p class="sec-lede">Cropped out of the same long exposure taken from the balcony above the Quarter.</p>
+    </div>
+    <div class="strip" data-reveal>
+      <div class="strip-cell" style="--fx:19%; --fy:15%; --zoom:2.6">
+        <img src="China%20Futuristic%20City.png" alt="Close crop of the red silk lanterns hanging from the balcony eaves.">
+        <span class="strip-cap"><b>The balcony pair</b>Silk, lattice, filament · loop 7</span>
+      </div>
+      <div class="strip-cell" style="--fx:5%; --fy:34%; --zoom:2.4">
+        <img src="China%20Futuristic%20City.png" alt="Close crop of the hand-painted red banner reading 未来城.">
+        <span class="strip-cap"><b>The banner</b>Hung new each spring · never lit</span>
+      </div>
+      <div class="strip-cell" style="--fx:22%; --fy:86%; --zoom:2.5">
+        <img src="China%20Futuristic%20City.png" alt="Close crop of wet flagstones reflecting red lantern light.">
+        <span class="strip-cap"><b>Wet stone</b>The reflected count · disputed until ’79</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="sec bordered" id="readout" style="background:linear-gradient(180deg, transparent, rgba(255,61,100,.04), transparent)">
+  <div class="wrap">
+    <div data-reveal>
+      <span class="eyebrow">坊内读数 · quarter readout</span>
+      <h2 class="sec-title">Tonight, on loop 7</h2>
+      <p class="sec-lede">Read off the junction boxes on the Filament Stair, where anyone can check them.</p>
+    </div>
+    <div class="readout" data-reveal>
+      <div class="meter"><div class="meter-top"><span class="label">Lanterns lit</span><span class="value">41,208</span></div><div class="meter-track"><div class="meter-fill" data-target="94"></div></div></div>
+      <div class="meter"><div class="meter-top"><span class="label">Loop 7 load</span><span class="value">63%</span></div><div class="meter-track"><div class="meter-fill" data-target="63"></div></div></div>
+      <div class="meter"><div class="meter-top"><span class="label">Workshops open</span><span class="value">112</span></div><div class="meter-track"><div class="meter-fill" data-target="76"></div></div></div>
+      <div class="meter"><div class="meter-top"><span class="label">Nightly footfall</span><span class="value">88,400</span></div><div class="meter-track"><div class="meter-fill" data-target="82"></div></div></div>
+      <div class="meter"><div class="meter-top"><span class="label">Mean lantern age</span><span class="value">34 YRS</span></div><div class="meter-track"><div class="meter-fill" data-target="58"></div></div></div>
+      <div class="meter"><div class="meter-top"><span class="label">Hand-made share</span><span class="value">100%</span></div><div class="meter-track"><div class="meter-fill" data-target="100"></div></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="quote">
+  <div class="wrap" data-reveal>
+    <blockquote>The grid may decide what the light costs. The Quarter decides what it looks like.</blockquote>
+    <cite>District code · 灯坊 · posted 2049, never amended</cite>
+  </div>
+</section>
+
+<nav class="prevnext" aria-label="Quarters">
+  <a class="pn prev" href="ink-canals.html" style="--pn:#ff3d64">
+    <span class="g" aria-hidden="true">墨</span>
+    <span class="dir">← Previous quarter</span>
+    <p class="nm">The Ink Canals</p>
+  </a>
+  <a class="pn next" href="floating-market.html" style="--pn:#f0b45c">
+    <span class="g" aria-hidden="true">市</span>
+    <span class="dir">Next quarter →</span>
+    <p class="nm">The Floating Market</p>
+  </a>
+</nav>
+
+<footer>
+  <div>
+    <span class="fmark">未来城 · 灯坊 LANTERN QUARTER</span><br>
+    Street level · grid loop 7 · open all night, every night but one.
+  </div>
+  <nav class="foot-links" aria-label="Site">
+    <a href="index.html">Observation deck</a>
+    <a href="floating-market.html">市 Floating Market</a>
+    <a href="river-dragon.html">龙 River Dragon</a>
+    <a href="sky-harbor.html">空 Sky Harbor</a>
+    <a href="temple-towers.html">塔 Temple Towers</a>
+    <a href="ink-canals.html">墨 Ink Canals</a>
+  </nav>
+  <div class="fine">
+    YR 2087 · N39.90° E116.41° · LOOP 7 NOMINAL<br>
+    Ambient track: “Tobu” — copyrighted, included for local playback only.
+  </div>
+</footer>
+
+<script>
+window.FC_TICKER = [
+  '<em>灯</em> LOOP 7 NOMINAL · 41,208 LIT',
+  'PAPER ROW: <b>112 WORKSHOPS OPEN</b>',
+  'WET STONE MARKET OPEN 17:00 UNTIL TIDE',
+  '<em>灯</em> HANGING ALLEY DARK HOUR — 21 JUNE, 23:00',
+  'APPRENTICE INTAKE CLOSES AT THE NEW MOON',
+  'DISTRICT CODE POSTED AT LANTERN STREET NORTH'
+];
+</script>
+<script src="assets/auth.js"></script>
+<script src="assets/admin.js"></script>
+<script src="assets/site.js"></script>
+</body>
+</html>

@@ -1,0 +1,1032 @@
+<title>Vesper Network</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;800;900&family=Michroma&family=Rajdhani:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --sky-top:#03040a;
+    --sky-mid:#0a0f24;
+    --sky-horizon:#1c1f4a;
+    --horizon-glow:58,42,92;
+    --cyan:#4de3ff;
+    --magenta:#ff3fb0;
+    --amber:#ffb648;
+    --ink:#eaf2ff;
+    --muted:#8a93c2;
+    --panel:rgba(9,13,28,.62);
+    --panel-strong:rgba(9,13,28,.85);
+    --panel-border:rgba(130,160,255,.22);
+  }
+
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:var(--sky-top);
+    color:var(--ink);
+    font-family:"IBM Plex Sans", system-ui, sans-serif;
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+    transition:background .5s ease;
+  }
+  ::selection{background:var(--cyan); color:#03040a;}
+  a{color:inherit;}
+  .display{font-family:"Michroma","Arial Narrow",sans-serif;}
+  .orbitron{font-family:"Orbitron",sans-serif; font-weight:900;}
+  .hud{font-family:"Rajdhani",sans-serif; font-weight:600; letter-spacing:.06em; font-variant-numeric:tabular-nums;}
+  .eyebrow{font-family:"Rajdhani",sans-serif; font-weight:600; font-size:.78rem; letter-spacing:.22em; text-transform:uppercase; color:var(--cyan); transition:color .5s ease;}
+
+  @media (prefers-reduced-motion: no-preference){
+    .reveal{opacity:0; transform:translateY(22px); transition:opacity .8s ease, transform .8s ease;}
+    .reveal.in-view{opacity:1; transform:translateY(0);}
+    .scroll-cue{animation:bob 2.2s ease-in-out infinite;}
+    @keyframes bob{0%,100%{transform:translateX(-50%) translateY(0); opacity:.6;}50%{transform:translateX(-50%) translateY(8px); opacity:1;}}
+    .ticker-track{animation:ticker 34s linear infinite;}
+    @keyframes ticker{to{transform:translateX(-50%);}}
+    .title-glow{animation:titlepulse 5s ease-in-out infinite;}
+    @keyframes titlepulse{0%,100%{text-shadow:0 0 16px var(--cyan), 0 0 40px var(--cyan);}50%{text-shadow:0 0 26px var(--cyan), 0 0 60px var(--cyan);}}
+    .sign-flicker{animation:flicker 7s ease-in-out infinite;}
+    @keyframes flicker{
+      0%,89%,93%,100%{opacity:1;}
+      90%{opacity:.35;} 91%{opacity:1;} 92%{opacity:.5;}
+    }
+    .meter-fill{transition:width 1.1s cubic-bezier(.2,.8,.2,1);}
+
+    .cursor-dot, .cursor-ring{transition:opacity .3s ease;}
+    .cursor-ring{transition:width .25s cubic-bezier(.2,.8,.2,1), height .25s cubic-bezier(.2,.8,.2,1), border-color .25s ease, background-color .25s ease;}
+    html.has-cursor, html.has-cursor a, html.has-cursor button, html.has-cursor .sign-card, html.has-cursor .portal{cursor:none;}
+
+    .split-word{display:inline-block; transform:translateY(112%); transition:transform .7s cubic-bezier(.2,.8,.2,1);}
+    .split-word.in-view{transform:translateY(0);}
+
+    .magnetic{transition:transform .25s cubic-bezier(.2,.8,.2,1);}
+
+    .warp-overlay{transition:opacity .38s ease;}
+    .warp-overlay::before{transition:opacity .38s ease;}
+  }
+
+  /* ---------- nav ---------- */
+  .topbar{
+    position:fixed; top:0; left:0; right:0; z-index:30;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:1rem clamp(1.25rem,4vw,3rem);
+    background:linear-gradient(180deg, rgba(3,4,10,.75), transparent);
+  }
+  .topbar .mark{display:flex; align-items:center; gap:.55rem; font-size:.85rem; letter-spacing:.08em; text-decoration:none;}
+  .topbar .mark .dot{width:.5rem; height:.5rem; border-radius:50%; background:var(--cyan); box-shadow:0 0 10px var(--cyan); transition:background .5s ease, box-shadow .5s ease;}
+  .topbar nav{display:flex; gap:1.4rem; font-family:"Rajdhani"; font-weight:600; font-size:.8rem; letter-spacing:.12em;}
+  .topbar nav a{text-decoration:none; color:var(--muted);}
+  .topbar nav a:hover, .topbar nav a:focus-visible, .topbar nav a.active{color:var(--ink);}
+  @media (max-width:720px){.topbar nav{display:none;}}
+
+  /* ---------- warp transition overlay ---------- */
+  .warp-overlay{
+    position:fixed; inset:0; z-index:150; background:#03040a;
+    opacity:0; pointer-events:none;
+  }
+  .warp-overlay.active{opacity:1;}
+  .warp-overlay::before{
+    content:""; position:absolute; top:50%; left:0; right:0; height:1px; opacity:0;
+    background:linear-gradient(90deg, transparent, var(--cyan), transparent);
+    box-shadow:0 0 24px var(--cyan);
+  }
+  .warp-overlay.active::before{opacity:1;}
+
+  /* ---------- custom cursor ---------- */
+  .cursor-dot, .cursor-ring{position:fixed; top:0; left:0; z-index:100; pointer-events:none; border-radius:50%; transform:translate(-999px,-999px); opacity:0;}
+  .cursor-dot{width:6px; height:6px; margin:-3px 0 0 -3px; background:var(--cyan); box-shadow:0 0 8px var(--cyan);}
+  .cursor-ring{width:32px; height:32px; margin:-16px 0 0 -16px; border:1px solid rgba(77,227,255,.5);}
+  .cursor-ring.is-hover{width:60px; height:60px; margin:-30px 0 0 -30px; background:rgba(77,227,255,.08); border-color:var(--cyan);}
+
+  /* ---------- loader ---------- */
+  .loader{
+    position:fixed; inset:0; z-index:200; background:#03040a;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1.1rem;
+    transition:opacity .7s ease, visibility .7s ease;
+  }
+  .loader.is-hidden{opacity:0; visibility:hidden; pointer-events:none;}
+  .loader .lmark{font-family:"Michroma"; font-size:.68rem; letter-spacing:.34em; color:var(--muted); text-transform:uppercase;}
+  .loader .lbar{width:200px; height:2px; background:rgba(130,160,255,.15); position:relative; overflow:hidden;}
+  .loader .lfill{position:absolute; inset:0 auto 0 0; width:0%; background:linear-gradient(90deg,var(--cyan),var(--magenta)); transition:width .5s ease;}
+
+  /* ---------- split headline ---------- */
+  .split-line{overflow:hidden; display:block;}
+
+  /* ---------- hub ---------- */
+  .hub{max-width:1200px; margin:0 auto; padding:clamp(7rem,14vw,9rem) clamp(1.25rem,4vw,3rem) clamp(4rem,8vw,6rem);}
+  .hub-intro{max-width:56ch; margin-bottom:clamp(2.5rem,5vw,3.5rem);}
+  .hub-intro h1{font-size:clamp(2.2rem,5.5vw,3.6rem); margin:.7rem 0 1rem; letter-spacing:.03em; text-wrap:balance;}
+  .hub-intro p{color:var(--muted); font-size:1.02rem; margin:0;}
+  .portals{display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:1.5rem;}
+  .portal{
+    display:block; text-decoration:none; color:var(--ink); background:var(--panel); border:1px solid var(--panel-border);
+    overflow:hidden; transition:transform .4s cubic-bezier(.2,.8,.2,1), border-color .3s ease;
+  }
+  .portal:hover{transform:translateY(-4px);}
+  .portal-preview{height:150px; position:relative; overflow:hidden;}
+  .portal-preview .p-glow{position:absolute; inset:auto 0 0 0; height:60%; opacity:.55;}
+  .portal-body{padding:1.1rem 1.25rem 1.4rem;}
+  .portal-body .p-eyebrow{font-family:"Rajdhani"; font-weight:600; font-size:.68rem; letter-spacing:.16em; text-transform:uppercase; margin-bottom:.35rem;}
+  .portal-body h3{font-size:1.3rem; margin:0 0 .5rem; letter-spacing:.02em;}
+  .portal-body p{margin:0; color:var(--muted); font-size:.88rem;}
+
+  /* ---------- hero ---------- */
+  .hero{position:relative; height:100svh; min-height:560px; overflow:hidden; isolation:isolate;}
+  .hero canvas{position:absolute; inset:0; width:100%; height:100%; display:block;}
+  .hero-vignette{
+    position:absolute; inset:0; pointer-events:none; z-index:2;
+    background:radial-gradient(120% 90% at 50% 40%, transparent 40%, rgba(2,3,8,.55) 100%);
+  }
+
+  .rooftop-floor{
+    position:absolute; left:0; right:0; bottom:0; height:22%; z-index:3; pointer-events:none;
+    background:linear-gradient(180deg, rgba(6,8,18,0) 0%, rgba(4,6,14,.92) 55%, #03040a 100%);
+  }
+  .rooftop-floor::before{
+    content:""; position:absolute; left:0; right:0; top:0; height:2px;
+    background:linear-gradient(90deg, transparent, rgba(77,227,255,.5), transparent);
+    box-shadow:0 0 14px rgba(77,227,255,.5);
+  }
+
+  .railing{position:absolute; left:0; right:0; bottom:16%; height:64px; z-index:4; pointer-events:none;}
+  .railing .bar{position:absolute; left:-2%; right:-2%; top:6px; height:2px; background:rgba(120,140,190,.55);}
+  .railing .posts{position:absolute; inset:0; background:repeating-linear-gradient(90deg, rgba(120,140,190,.4) 0 2px, transparent 2px 46px); opacity:.8;}
+
+  .figure{
+    position:absolute; left:14%; bottom:15.5%; z-index:5; pointer-events:none;
+    width:54px; height:118px;
+  }
+  .figure .head{position:absolute; top:0; left:17px; width:20px; height:20px; border-radius:50%; background:#050710;}
+  .figure .body{
+    position:absolute; top:17px; left:0; width:54px; height:101px; background:#050710;
+    clip-path:polygon(30% 0%, 70% 0%, 100% 18%, 88% 100%, 12% 100%, 0% 18%);
+    filter:drop-shadow(2px 0 6px rgba(77,227,255,.18)) drop-shadow(-2px 0 6px rgba(255,63,176,.12));
+  }
+
+  .hud-panel{
+    position:absolute; z-index:6; background:var(--panel); border:1px solid var(--panel-border);
+    backdrop-filter:blur(6px); padding:.6rem .8rem; font-size:.72rem; color:var(--muted);
+  }
+  .hud-panel b{display:block; color:var(--ink); font-family:"Rajdhani"; font-weight:700; font-size:.95rem; letter-spacing:.04em;}
+  .hud-tl{top:5.5rem; left:clamp(1.25rem,4vw,3rem);}
+  .hud-tr{top:5.5rem; right:clamp(1.25rem,4vw,3rem); text-align:right;}
+  @media (max-width:720px){.hud-panel{display:none;}}
+
+  .hero-copy{
+    position:absolute; z-index:6; left:50%; top:38%; transform:translate(-50%,-50%);
+    text-align:center; width:100%; padding:0 1.25rem;
+  }
+  .hero-copy .eyebrow{display:block; margin-bottom:.9rem;}
+  .hero-copy h1{
+    margin:0; font-size:clamp(2.4rem,7.5vw,5.6rem); letter-spacing:.04em; color:var(--ink);
+    text-wrap:balance;
+  }
+  .hero-copy p{margin:1.1rem auto 0; max-width:40ch; color:var(--muted); font-size:1.02rem;}
+
+  .scroll-cue{
+    position:absolute; z-index:6; left:50%; bottom:6.5%; transform:translateX(-50%);
+    display:flex; flex-direction:column; align-items:center; gap:.4rem;
+    font-family:"Rajdhani"; font-size:.7rem; letter-spacing:.2em; color:var(--muted);
+    text-decoration:none;
+  }
+  .scroll-cue svg{width:16px; height:16px;}
+
+  /* ---------- ticker ---------- */
+  .ticker{
+    background:#050712; border-top:1px solid var(--panel-border); border-bottom:1px solid var(--panel-border);
+    overflow:hidden; white-space:nowrap; padding:.6rem 0;
+  }
+  .ticker-track{display:inline-block; will-change:transform;}
+  .ticker-track span{
+    display:inline-block; font-family:"Rajdhani"; font-weight:600; font-size:.82rem; letter-spacing:.1em;
+    color:var(--muted); padding:0 1.4rem;
+  }
+  .ticker-track span em{font-style:normal; color:var(--cyan);}
+
+  /* ---------- sections ---------- */
+  main{max-width:1360px; margin:0 auto; padding:0 clamp(1.25rem,4vw,3rem);}
+  .section-head{padding-top:clamp(3.5rem,7vw,5.5rem); margin-bottom:2rem;}
+  .section-head h2{font-size:clamp(1.6rem,3vw,2.2rem); margin:0 0 .5rem; letter-spacing:.02em;}
+  .section-head p{color:var(--muted); max-width:56ch; margin:0;}
+
+  .districts{display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:1.25rem; padding-bottom:clamp(3rem,6vw,4.5rem);}
+  .sign-card{
+    position:relative; padding:1.4rem 1.4rem 1.6rem; background:var(--panel); border:1px solid var(--panel-border);
+    transition:transform .4s cubic-bezier(.2,.8,.2,1), border-color .3s ease;
+    transform-style:preserve-3d; will-change:transform;
+  }
+  .sign-card:hover{transform:translateY(-3px);}
+  .sign-card::before{
+    content:""; position:absolute; top:0; left:0; right:0; height:2px; z-index:1;
+  }
+  .sign-card::after{
+    content:""; position:absolute; inset:0; pointer-events:none; opacity:0; transition:opacity .3s ease;
+    background:radial-gradient(240px circle at var(--mx,50%) var(--my,50%), rgba(255,255,255,.1), transparent 62%);
+  }
+  .sign-card:hover::after{opacity:1;}
+  .sign-card[data-hue="cyan"]::before{background:var(--cyan); box-shadow:0 0 10px var(--cyan);}
+  .sign-card[data-hue="magenta"]::before{background:var(--magenta); box-shadow:0 0 10px var(--magenta);}
+  .sign-card:hover[data-hue="cyan"]{border-color:var(--cyan);}
+  .sign-card:hover[data-hue="magenta"]{border-color:var(--magenta);}
+  .sign-card .tag{font-family:"Rajdhani"; font-weight:600; font-size:.7rem; letter-spacing:.14em; color:var(--muted); text-transform:uppercase;}
+  .sign-card h3{font-size:1.25rem; margin:.4rem 0 .7rem; letter-spacing:.01em;}
+  .sign-card[data-hue="cyan"] h3{color:var(--cyan);}
+  .sign-card[data-hue="magenta"] h3{color:var(--magenta);}
+  .sign-card p{margin:0; color:var(--muted); font-size:.9rem;}
+
+  /* ---------- readout ---------- */
+  .readout{
+    padding-bottom:clamp(3.5rem,7vw,5.5rem);
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:1.5rem 2.5rem;
+  }
+  .meter{padding:1rem 0; border-bottom:1px solid var(--panel-border);}
+  .meter-top{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:.5rem;}
+  .meter-top .label{font-family:"Rajdhani"; font-weight:600; font-size:.78rem; letter-spacing:.12em; color:var(--muted); text-transform:uppercase;}
+  .meter-top .value{font-family:"Rajdhani"; font-weight:700; font-size:1.15rem; color:var(--ink);}
+  .meter-track{height:5px; background:rgba(130,160,255,.14); position:relative; overflow:hidden;}
+  .meter-fill{position:absolute; inset:0 auto 0 0; width:0; background:linear-gradient(90deg, var(--cyan), var(--magenta));}
+
+  /* ---------- footer ---------- */
+  footer{
+    border-top:1px solid var(--panel-border); padding:2.5rem clamp(1.25rem,4vw,3rem) 3rem;
+    max-width:1360px; margin:0 auto; display:flex; justify-content:space-between; align-items:flex-end;
+    gap:1.5rem; flex-wrap:wrap; color:var(--muted); font-size:.78rem;
+  }
+  footer .fmark{font-family:"Rajdhani"; font-weight:700; letter-spacing:.1em; color:var(--ink);}
+</style>
+
+<div class="loader" id="loader">
+  <span class="lmark">Synchronizing Skyline Feed</span>
+  <div class="lbar"><div class="lfill" id="loader-fill"></div></div>
+</div>
+
+<div class="warp-overlay" id="warp"></div>
+<div class="cursor-ring" id="cursor-ring" aria-hidden="true"></div>
+<div class="cursor-dot" id="cursor-dot" aria-hidden="true"></div>
+
+<div class="topbar">
+  <a class="mark" href="#home"><span class="dot" id="nav-dot"></span><span class="display" style="font-size:.85rem;">VESPER NETWORK</span></a>
+  <nav id="city-nav">
+    <a class="magnetic" data-route="vesper" href="#vesper">Vesper</a>
+    <a class="magnetic" data-route="solmere" href="#solmere">Solmere</a>
+    <a class="magnetic" data-route="halcyon" href="#halcyon">Halcyon</a>
+    <a class="magnetic" data-route="ironvale" href="#ironvale">Ironvale</a>
+  </nav>
+</div>
+
+<section class="hub" id="hub-page" hidden>
+  <div class="hub-intro reveal">
+    <span class="eyebrow">Network Overview</span>
+    <h1 class="orbitron">Four Cities,<br>One Grid</h1>
+    <p>Every skyline logged by the same observation network, each running its own weather, traffic, and light. Pick a city to descend.</p>
+  </div>
+  <div class="portals" id="portals"></div>
+</section>
+
+<div id="city-page" hidden>
+  <section class="hero" id="top">
+    <canvas id="sky" aria-hidden="true"></canvas>
+    <div class="hero-vignette"></div>
+
+    <div class="hud-panel hud-tl">
+      <b id="hud-time">--:--:--</b>
+      LOCAL TIME · <span id="hud-sector">SECTOR 9</span>
+    </div>
+    <div class="hud-panel hud-tr">
+      <b id="hud-status-b">NOMINAL</b>
+      <span id="hud-status-sub">AIR LANES 12 ACTIVE · WIND 6KT</span>
+    </div>
+
+    <div class="hero-copy">
+      <span class="eyebrow" id="city-eyebrow">Observation Deck 41</span>
+      <h1 class="orbitron title-glow" id="city-title">VESPER CITY</h1>
+      <p id="city-tagline">Forty million lights and a skyline that has not gone dark in nineteen years.</p>
+    </div>
+
+    <div class="rooftop-floor"></div>
+    <div class="railing"><div class="bar"></div><div class="posts"></div></div>
+    <div class="figure"><div class="head"></div><div class="body"></div></div>
+
+    <a href="#current-districts" class="scroll-cue" id="scroll-cue">
+      DESCEND
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 5l6 6 6-6"/></svg>
+    </a>
+  </section>
+
+  <div class="ticker">
+    <div class="ticker-track" id="ticker-track"></div>
+  </div>
+
+  <main>
+    <section id="current-districts">
+      <div class="section-head reveal">
+        <h2 class="display split-line" style="font-size:1.6rem;"><span class="split">Districts</span></h2>
+        <p id="districts-sub"></p>
+      </div>
+      <div class="districts" id="districts-grid"></div>
+    </section>
+
+    <section id="current-readout">
+      <div class="section-head reveal">
+        <h2 class="display split-line" style="font-size:1.6rem;"><span class="split">System Readout</span></h2>
+        <p id="readout-sub"></p>
+      </div>
+      <div class="readout" id="readout-grid"></div>
+    </section>
+  </main>
+
+  <footer>
+    <div><span class="fmark" id="footer-mark">VESPER CITY</span> — Observation Deck Archive</div>
+    <div id="footer-fine">Figures approximate. Skyline rendered live from the network's observation grid.</div>
+  </footer>
+</div>
+
+<script>
+(function(){
+  /* ===================== city configuration ===================== */
+  var CITIES = {
+    vesper: {
+      name:'VESPER CITY', eyebrow:'Observation Deck 41', sector:'SECTOR 9',
+      hook:'The city that never dims.',
+      tagline:'Forty million lights and a skyline that has not gone dark in nineteen years.',
+      hues:{primary:'#4de3ff', secondary:'#ff3fb0', tertiary:'#ffb648'},
+      sky:{top:'#03040a', mid:'#0a0f24', horizon:'#1c1f4a', glow:'58,42,92'},
+      features:{moon:true, planet:false, sun:false, dome:false, waterfall:false, capitalShip:false, fog:0, spireDominant:false, density:1},
+      status:{b:'NOMINAL', sub:'AIR LANES 12 ACTIVE · WIND 6KT'},
+      ticker:['TRANSIT: RING LINE NOMINAL','WEATHER: CLEAR · VISIBILITY 40KM','GRID: POWER LOAD STABLE','CURFEW LIFTS 05:00','AIR LANES 12 ACTIVE, 2 REROUTED'],
+      districtsSub:'Four blocks of the skyline worth knowing before you land.',
+      districts:[
+        {hue:'cyan', tag:'Financial Canopy', name:'MERIDIAN DYNAMICS', text:'Forty stacked exchanges trade before sunrise; the spire lights track the index in real time.'},
+        {hue:'magenta', tag:'The Undergrid', name:'SABLE TRANSIT', text:'Six train lines run beneath the flood line, lit amber so no one mistakes them for daylight.'},
+        {hue:'cyan', tag:'Night Market', name:'GLASSWORKS QUARTER', text:'The market never closes; the stalls just change hands at shift change.'},
+        {hue:'magenta', tag:'Residential Stacks', name:'NORTH RIDGE', text:'Half a million balconies, each one glowing a slightly different white.'}
+      ],
+      readoutSub:"Live figures from the observation deck's own instrument panel.",
+      stats:[
+        {label:'Population', value:'41.2M', target:88},
+        {label:'Grid Load', value:'78%', target:78},
+        {label:'Air Traffic', value:'MODERATE', target:52},
+        {label:'Transit Uptime', value:'99.4%', target:99},
+        {label:'Avg Night Temp', value:'14°C', target:40}
+      ]
+    },
+    solmere: {
+      name:'SOLMERE SPIRE', eyebrow:'The Spire Approach', sector:'SECTOR 2',
+      hook:'One tower over everything.',
+      tagline:"One tower taller than the rest of the skyline combined, and everyone still finds a reason to look up.",
+      hues:{primary:'#ff9d4d', secondary:'#ff3fb0', tertiary:'#6fd8ff'},
+      sky:{top:'#170a1f', mid:'#3a1530', horizon:'#ff7a45', glow:'255,122,69'},
+      features:{moon:false, planet:false, sun:true, dome:false, waterfall:false, capitalShip:true, fog:0, spireDominant:true, density:1},
+      status:{b:'QUEUED', sub:'SPIRE DOCKS FULL · WIND 14KT'},
+      ticker:['CARGO: SPIRE QUEUE 4H','FREIGHT LANES CLEAR','DUSK WINDS 18KT','AMBER MARKET OPEN','REFUEL BAYS 6/8 ACTIVE'],
+      districtsSub:'Everything in Solmere answers to the Spire, one way or another.',
+      districts:[
+        {hue:'cyan', tag:'Fuel Exchange', name:'COMBUSTION ROW', text:'The freighters queue for kilometers before dusk; nobody undercuts the Row and lives to repeat it.'},
+        {hue:'magenta', tag:'Freight Docks', name:'CINDERGATE', text:'Every hull that lands here leaves lighter, cargo sold before the engines cool.'},
+        {hue:'cyan', tag:'Vertical Bazaar', name:'THE AMBER STAIR', text:"Nine thousand steps wind the spire's skin; merchants pay by the tread, not the stall."},
+        {hue:'magenta', tag:'Old Residential', name:'LAST LIGHT QUARTER', text:'The oldest district still catches real sunset, twenty minutes longer than anywhere else in the city.'}
+      ],
+      readoutSub:'Cargo and heat figures, read off the Spire itself.',
+      stats:[
+        {label:'Population', value:'28.6M', target:64},
+        {label:'Cargo Throughput', value:'HIGH', target:91},
+        {label:'Grid Load', value:'82%', target:82},
+        {label:'Spire Traffic', value:'QUEUED', target:70},
+        {label:'Avg Dusk Temp', value:'26°C', target:58}
+      ]
+    },
+    halcyon: {
+      name:'HALCYON REACH', eyebrow:'Orbital Threshold', sector:'SECTOR 7',
+      hook:'Waterfalls in freefall, upward and down.',
+      tagline:"Water falls upward here as often as it falls down. Nobody's fixed that. Nobody wants to.",
+      hues:{primary:'#6fa8ff', secondary:'#b06aff', tertiary:'#4de3ff'},
+      sky:{top:'#020310', mid:'#0a0c2a', horizon:'#231246', glow:'88,52,150'},
+      features:{moon:true, planet:true, sun:false, dome:true, waterfall:true, capitalShip:false, fog:0, spireDominant:false, density:.9},
+      status:{b:'NOMINAL', sub:'DOCK TRAFFIC LOW ORBIT'},
+      ticker:['HYDRO: RECLAMATION NOMINAL','DOCK TRAFFIC LOW ORBIT','DOME SEAL STABLE','TIDAL VENT CYCLE 04:00','LUNAR TRANSIT CLEAR'],
+      districtsSub:'Half the city runs on water that never quite decides which way is down.',
+      districts:[
+        {hue:'cyan', tag:'Hydro Canopy', name:'THE FALLS DISTRICT', text:'Reclaimed rain drops nine hundred meters through the core before it ever reaches a pipe.'},
+        {hue:'magenta', tag:'Biosphere', name:'DOME GARDENS', text:'A single geodesic seal keeps an entire climate zone alive above the traffic.'},
+        {hue:'cyan', tag:'Orbital Docks', name:'DRIFTLINE', text:"Ships from three moons dock here before the final descent; nobody says which three."},
+        {hue:'magenta', tag:'Zero-G Housing', name:'LOWORBIT ROW', text:'Furniture is bolted down out of habit more than necessity.'}
+      ],
+      readoutSub:'Hydro and orbital figures from the Reach control ring.',
+      stats:[
+        {label:'Population', value:'19.4M', target:44},
+        {label:'Water Reclamation', value:'96%', target:96},
+        {label:'Grid Load', value:'61%', target:61},
+        {label:'Dock Traffic', value:'LOW', target:33},
+        {label:'Avg Temp', value:'9°C', target:24}
+      ]
+    },
+    ironvale: {
+      name:'IRONVALE', eyebrow:'Lower Canyon', sector:'SECTOR 4',
+      hook:'Ninety floors below the fog line.',
+      tagline:'The fog never lifts past the ninetieth floor, so nobody who lives above it comes down.',
+      hues:{primary:'#ff4d6a', secondary:'#4d8fff', tertiary:'#ff6ad1'},
+      sky:{top:'#0a0c16', mid:'#181022', horizon:'#2a1420', glow:'160,40,70'},
+      features:{moon:false, planet:false, sun:false, dome:false, waterfall:false, capitalShip:false, fog:.55, spireDominant:false, density:1.35},
+      status:{b:'STRAINED', sub:'GRID BROWNOUT SECTOR 4'},
+      ticker:['AIR QUALITY: POOR, MASKS ADVISED','GRID BROWNOUT SECTOR 4','MARKET CURFEW NONE','FOG LINE 88F','ELEVATOR 3 OUT'],
+      districtsSub:'Nobody above the fog line has been down here in years.',
+      districts:[
+        {hue:'cyan', tag:'Scrap Exchange', name:'THE STACKYARDS', text:'Nothing here was built new in a decade; everything here still works.'},
+        {hue:'magenta', tag:'Unlicensed Market', name:'REDLIGHT ROW', text:'The signs outnumber the shopfronts two to one; most of them are lying.'},
+        {hue:'cyan', tag:'Vertical Slums', name:'CABLE COURT', text:'Forty thousand people share six elevators that mostly work.'},
+        {hue:'magenta', tag:'Lower Canyon', name:'FOGLINE', text:"The smog sits so low some residents have never seen their own rooftops."}
+      ],
+      readoutSub:'Grid and air figures from the last working sensor mast.',
+      stats:[
+        {label:'Population', value:'63.8M', target:97},
+        {label:'Grid Load', value:'94%', target:94},
+        {label:'Air Quality', value:'POOR', target:22},
+        {label:'Transit Uptime', value:'81%', target:81},
+        {label:'Avg Temp', value:'19°C', target:46}
+      ]
+    }
+  };
+  var ORDER = ['vesper','solmere','halcyon','ironvale'];
+
+  var reduceMotion = !window.matchMedia('(prefers-reduced-motion: no-preference)').matches;
+  var enhance = !reduceMotion && window.matchMedia('(pointer: fine)').matches;
+
+  /* ===================== canvas engine ===================== */
+  var canvas = document.getElementById('sky');
+  var ctx = canvas.getContext('2d');
+  var W = 0, H = 0, DPR = 1;
+  var mouseX = .5, mouseY = .5, targetX = .5, targetY = .5;
+  var canvasActive = false;
+  var currentCfg = CITIES.vesper;
+
+  function rand(a,b){ return a + Math.random()*(b-a); }
+
+  var stars = [], farBuildings = [], midBuildings = [], nearSigns = [], vehicles = [], lanes = [], falls = [];
+
+  function buildScene(cfg){
+    stars = [];
+    for (var i=0;i<90;i++){
+      stars.push({x:rand(0,W), y:rand(0,H*.5), r:rand(.4,1.6), phase:rand(0,Math.PI*2), speed:rand(.6,1.6)});
+    }
+
+    farBuildings = [];
+    var x = -20;
+    while (x < W+60){
+      var w = rand(30,72);
+      farBuildings.push({x:x, w:w, h:rand(H*.16,H*.36)});
+      x += w + rand(2,10) / cfg.features.density;
+    }
+
+    midBuildings = [];
+    x = -40;
+    var centerX = W/2, spireDone = false;
+    while (x < W+80){
+      var w2 = rand(46,112);
+      var h2 = rand(H*.3, H*.6);
+      var isSpire = cfg.features.spireDominant && !spireDone && x < centerX && x + w2 > centerX - 40;
+      if (isSpire){ w2 = rand(60,90); h2 = H*.86; spireDone = true; }
+      var cols = Math.max(2, Math.floor(w2/9));
+      var rows = Math.max(4, Math.floor(h2/13));
+      var windows = [];
+      for (var c=0;c<cols;c++){
+        for (var r=0;r<rows;r++){
+          if (Math.random() < .6){
+            var roll = Math.random();
+            var hue = roll < .12 ? 'secondary' : roll < .2 ? 'tertiary' : 'primary';
+            windows.push({c:c, r:r, hue:hue, flick: Math.random() < .06});
+          }
+        }
+      }
+      midBuildings.push({x:x, w:w2, h:h2, cols:cols, rows:rows, windows:windows, spire: isSpire || Math.random() < .22});
+      x += w2 + rand(3,14) / cfg.features.density;
+    }
+
+    nearSigns = cfg.features.spireDominant ? [
+      {x:centerX-30, y:H*.2, text:cfg.name.split(' ')[0], color:'secondary', size:15}
+    ] : [
+      {x:W*.1, y:H*.46, text:cfg.name.split(' ')[0], color:'primary', size:12},
+      {x:W*.68, y:H*.32, text:'NETWORK', color:'secondary', size:12}
+    ];
+
+    vehicles = [];
+    for (var v=0; v<4; v++){
+      vehicles.push({
+        y: rand(H*.08, H*.38),
+        speed: rand(20,42) * (Math.random() < .5 ? 1 : -1),
+        offset: rand(0, W),
+        len: rand(18,34),
+        color: Math.random() < .5 ? 'primary' : 'tertiary'
+      });
+    }
+
+    lanes = [
+      {y0:H*.8, y1:H*.72, y2:H*.84, dir:1, count:16, color:'tertiary'},
+      {y0:H*.87, y1:H*.82, y2:H*.92, dir:-1, count:12, color:'primary'}
+    ];
+
+    falls = [];
+    if (cfg.features.waterfall){
+      var fx = [W*.22, W*.58, W*.81];
+      fx.forEach(function(px){
+        var drops = [];
+        for (var d=0; d<14; d++) drops.push({o:rand(0,1), sp:rand(.25,.4)});
+        falls.push({x:px, top:H*.28, bottom:H*.82, drops:drops});
+      });
+    }
+  }
+
+  function resize(){
+    var rect = canvas.getBoundingClientRect();
+    if (rect.width < 2) return;
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    W = rect.width; H = rect.height;
+    canvas.width = Math.max(1, W * DPR);
+    canvas.height = Math.max(1, H * DPR);
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    buildScene(currentCfg);
+  }
+
+  function laneY(lane, t){
+    return (1-t)*(1-t)*lane.y0 + 2*(1-t)*t*lane.y1 + t*t*lane.y2;
+  }
+
+  var t0 = performance.now();
+
+  function hueColor(cfg, key){ return cfg.hues[key] || cfg.hues.primary; }
+
+  function draw(now){
+    if (!canvasActive){ return; }
+    var cfg = currentCfg;
+    var time = (now - t0) / 1000;
+    mouseX += (targetX - mouseX) * .06;
+    mouseY += (targetY - mouseY) * .06;
+    var px = mouseX - .5, py = mouseY - .5;
+
+    ctx.clearRect(0,0,W,H);
+
+    var sky = ctx.createLinearGradient(0,0,0,H);
+    sky.addColorStop(0, cfg.sky.top);
+    sky.addColorStop(.55, cfg.sky.mid);
+    sky.addColorStop(1, cfg.sky.horizon);
+    ctx.fillStyle = sky;
+    ctx.fillRect(0,0,W,H);
+
+    var glow = ctx.createRadialGradient(W*.5,H*.86,10,W*.5,H*.86,W*.6);
+    glow.addColorStop(0,'rgba(' + cfg.sky.glow + ',.5)');
+    glow.addColorStop(1,'rgba(' + cfg.sky.glow + ',0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(0,0,W,H);
+
+    if (cfg.features.sun){
+      var sunX = W*.5, sunY = H*.58;
+      var sun = ctx.createRadialGradient(sunX,sunY,4,sunX,sunY,W*.28);
+      sun.addColorStop(0,'rgba(255,170,110,.75)');
+      sun.addColorStop(1,'rgba(255,170,110,0)');
+      ctx.fillStyle = sun;
+      ctx.fillRect(0,0,W,H);
+    }
+
+    if (cfg.features.planet){
+      var plX = W*.22, plY = H*.16;
+      ctx.fillStyle = '#8fa0c9';
+      ctx.beginPath(); ctx.arc(plX,plY,34,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle = 'rgba(20,15,40,.35)';
+      ctx.beginPath(); ctx.arc(plX-8,plY-6,34,0,Math.PI*2); ctx.fill();
+    }
+    if (cfg.features.moon){
+      var moonX = cfg.features.planet ? W*.36 : W*.8, moonY = cfg.features.planet ? H*.22 : H*.16;
+      var mr = cfg.features.planet ? 10 : 30;
+      var moon = ctx.createRadialGradient(moonX,moonY,2,moonX,moonY,mr);
+      moon.addColorStop(0,'rgba(234,242,255,.9)');
+      moon.addColorStop(1,'rgba(234,242,255,0)');
+      ctx.fillStyle = moon;
+      ctx.beginPath(); ctx.arc(moonX,moonY,mr,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#eef4ff';
+      ctx.beginPath(); ctx.arc(moonX,moonY,mr*.3,0,Math.PI*2); ctx.fill();
+    }
+
+    stars.forEach(function(s){
+      var a = reduceMotion ? .8 : (.3 + .7*Math.abs(Math.sin(time*s.speed + s.phase)));
+      ctx.globalAlpha = a * (1 - cfg.features.fog*.6);
+      ctx.fillStyle = '#eaf2ff';
+      ctx.beginPath();
+      ctx.arc(s.x + px*-6, s.y + py*-4, s.r, 0, Math.PI*2);
+      ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+
+    if (cfg.features.dome){
+      var dx = W*.74, dy = H*.86, dr = W*.13;
+      ctx.strokeStyle = 'rgba(234,242,255,.4)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.arc(dx,dy,dr,Math.PI,0); ctx.stroke();
+      for (var g=1; g<4; g++){
+        ctx.beginPath();
+        ctx.arc(dx,dy,dr,Math.PI + g*.6,Math.PI + g*.6 + .01);
+        ctx.moveTo(dx - dr*Math.cos(g*.5), dy - dr*Math.sin(g*.5));
+        ctx.lineTo(dx, dy);
+      }
+      ctx.beginPath(); ctx.moveTo(dx-dr,dy); ctx.lineTo(dx+dr,dy); ctx.stroke();
+    }
+
+    ctx.fillStyle = 'rgba(20,26,58,.85)';
+    farBuildings.forEach(function(b){
+      ctx.fillRect(b.x + px*-14, H - b.h, b.w, b.h);
+    });
+
+    midBuildings.forEach(function(b){
+      var bx = b.x + px*-30;
+      ctx.fillStyle = '#0b1029';
+      ctx.fillRect(bx, H - b.h, b.w, b.h);
+      var cw = b.w / b.cols, rh = b.h / b.rows;
+      b.windows.forEach(function(win){
+        var flick = (win.flick && !reduceMotion) ? (Math.sin(time*3 + win.c*7 + win.r*3) > .7 ? .12 : 1) : 1;
+        ctx.globalAlpha = .78 * flick;
+        ctx.fillStyle = hueColor(cfg, win.hue);
+        ctx.fillRect(bx + win.c*cw + 1, H - b.h + win.r*rh + 1, Math.max(1,cw-2), Math.max(1,rh-2));
+      });
+      ctx.globalAlpha = 1;
+      if (b.spire){
+        ctx.strokeStyle = 'rgba(234,242,255,.35)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(bx + b.w/2, H - b.h);
+        ctx.lineTo(bx + b.w/2, H - b.h - 18);
+        ctx.stroke();
+      }
+    });
+
+    falls.forEach(function(f){
+      f.drops.forEach(function(d){
+        var t = reduceMotion ? d.o : ((d.o + time*d.sp) % 1 + 1) % 1;
+        var fy = f.top + t*(f.bottom-f.top);
+        ctx.globalAlpha = .5 * (1 - t*.5);
+        ctx.strokeStyle = hueColor(cfg,'tertiary');
+        ctx.shadowColor = hueColor(cfg,'tertiary');
+        ctx.shadowBlur = 4;
+        ctx.beginPath();
+        ctx.moveTo(f.x, fy); ctx.lineTo(f.x, fy+10);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+      });
+    });
+    ctx.globalAlpha = 1;
+
+    nearSigns.forEach(function(sign, i){
+      var pulse = reduceMotion ? 1 : (.72 + .28*Math.sin(time*1.3 + i*1.7));
+      var color = hueColor(cfg, sign.color);
+      ctx.save();
+      ctx.translate(sign.x + px*-42, sign.y + py*-10);
+      ctx.font = '700 ' + sign.size + 'px Michroma, sans-serif';
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 15 * pulse;
+      ctx.fillStyle = color;
+      ctx.globalAlpha = pulse;
+      ctx.fillText(sign.text, 0, 0);
+      ctx.restore();
+      ctx.globalAlpha = 1;
+    });
+
+    lanes.forEach(function(lane){
+      var color = hueColor(cfg, lane.color);
+      for (var i=0;i<lane.count;i++){
+        var tt = reduceMotion ? (i/lane.count) : (((time*.1*lane.dir) + i/lane.count) % 1 + 1) % 1;
+        var lx = tt*(W+80) - 40, ly = laneY(lane, tt);
+        var ttp = ((tt - .015) % 1 + 1) % 1;
+        var px2 = ttp*(W+80) - 40, py2 = laneY(lane, ttp);
+        ctx.strokeStyle = color;
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 6;
+        ctx.globalAlpha = .35;
+        ctx.lineWidth = 1.4;
+        ctx.beginPath(); ctx.moveTo(lx,ly); ctx.lineTo(px2,py2); ctx.stroke();
+        ctx.globalAlpha = .9;
+        ctx.fillStyle = color;
+        ctx.beginPath(); ctx.ellipse(lx,ly,3,1.3,0,0,Math.PI*2); ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+    });
+    ctx.globalAlpha = 1;
+
+    vehicles.forEach(function(v){
+      var x = reduceMotion ? v.offset : (((v.offset + time*v.speed) % (W+80)) + (W+80)) % (W+80) - 40;
+      var color = hueColor(cfg, v.color);
+      ctx.strokeStyle = color;
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 8;
+      ctx.lineWidth = 1.6;
+      ctx.globalAlpha = .75;
+      ctx.beginPath();
+      ctx.moveTo(x, v.y);
+      ctx.lineTo(x - v.len*(v.speed<0?-1:1), v.y);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.globalAlpha = 1;
+    });
+
+    if (cfg.features.capitalShip){
+      var csT = reduceMotion ? .5 : ((time*.02) % 1);
+      var csX = -200 + csT*(W+400);
+      var csY = H*.2;
+      ctx.save();
+      ctx.translate(csX, csY);
+      ctx.fillStyle = '#141a2e';
+      ctx.strokeStyle = hueColor(cfg,'primary');
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(0,0); ctx.lineTo(130,-14); ctx.lineTo(160,0); ctx.lineTo(130,14); ctx.lineTo(0,10); ctx.closePath();
+      ctx.fill(); ctx.stroke();
+      for (var e2=0;e2<3;e2++){
+        ctx.fillStyle = hueColor(cfg,'tertiary');
+        ctx.shadowColor = hueColor(cfg,'tertiary');
+        ctx.shadowBlur = 8;
+        ctx.beginPath(); ctx.arc(10+e2*10, 4, 2, 0, Math.PI*2); ctx.fill();
+      }
+      ctx.shadowBlur = 0;
+      ctx.restore();
+    }
+
+    if (cfg.features.fog > 0){
+      var f1 = ctx.createLinearGradient(0,H*.4,0,H);
+      f1.addColorStop(0,'rgba(30,26,40,0)');
+      f1.addColorStop(1,'rgba(30,26,40,' + (cfg.features.fog*.7) + ')');
+      ctx.fillStyle = f1;
+      ctx.fillRect(0,0,W,H);
+    }
+
+    requestAnimationFrame(draw);
+  }
+
+  /* ===================== rendering / routing ===================== */
+  var loaderEl = document.getElementById('loader');
+  var loaderFill = document.getElementById('loader-fill');
+  var warp = document.getElementById('warp');
+  var hubPage = document.getElementById('hub-page');
+  var cityPage = document.getElementById('city-page');
+  var currentRoute = null;
+
+  function setPalette(cfg){
+    var root = document.documentElement.style;
+    root.setProperty('--cyan', cfg.hues.primary);
+    root.setProperty('--magenta', cfg.hues.secondary);
+    root.setProperty('--amber', cfg.hues.tertiary);
+    root.setProperty('--sky-top', cfg.sky.top);
+    root.setProperty('--sky-horizon', cfg.sky.horizon);
+  }
+
+  function revealNow(container){
+    var els = container.querySelectorAll('.reveal, .meter-fill');
+    els.forEach(function(el){
+      if (el.classList && el.classList.contains('reveal')){
+        requestAnimationFrame(function(){ requestAnimationFrame(function(){ el.classList.add('in-view'); }); });
+      }
+      if (el.classList && el.classList.contains('meter-fill')){
+        requestAnimationFrame(function(){ requestAnimationFrame(function(){ el.style.width = el.dataset.target + '%'; }); });
+      }
+    });
+  }
+
+  function renderHub(){
+    var wrap = document.getElementById('portals');
+    if (wrap.childElementCount === 0){
+      ORDER.forEach(function(key){
+        var cfg = CITIES[key];
+        var a = document.createElement('a');
+        a.className = 'portal reveal';
+        a.href = '#' + key;
+        var previewGrad = 'linear-gradient(180deg,' + cfg.sky.top + ',' + cfg.sky.horizon + '),' +
+          'repeating-linear-gradient(90deg, rgba(255,255,255,.08) 0 8px, transparent 8px 18px, rgba(255,255,255,.03) 18px 22px, transparent 22px 34px)';
+        a.innerHTML =
+          '<div class="portal-preview" style="background:' + previewGrad + '">' +
+            '<div class="p-glow" style="background:radial-gradient(80% 100% at 50% 100%, ' + cfg.hues.primary + '55, transparent)"></div>' +
+          '</div>' +
+          '<div class="portal-body">' +
+            '<div class="p-eyebrow" style="color:' + cfg.hues.primary + '">' + cfg.eyebrow + '</div>' +
+            '<h3 class="display" style="font-size:1.1rem;">' + cfg.name + '</h3>' +
+            '<p>' + cfg.hook + '</p>' +
+          '</div>';
+        wrap.appendChild(a);
+      });
+      if (enhance) wireDynamicHover(wrap, '.portal');
+    }
+    canvasActive = false;
+    hubPage.hidden = false;
+    cityPage.hidden = true;
+    revealNow(hubPage);
+  }
+
+  function renderCity(key){
+    var cfg = CITIES[key];
+    if (!cfg) { location.hash = '#home'; return; }
+    currentCfg = cfg;
+    setPalette(cfg);
+
+    document.getElementById('city-eyebrow').textContent = cfg.eyebrow;
+    document.getElementById('city-title').textContent = cfg.name;
+    document.getElementById('city-tagline').textContent = cfg.tagline;
+    document.getElementById('hud-sector').textContent = cfg.sector;
+    document.getElementById('hud-status-b').textContent = cfg.status.b;
+    document.getElementById('hud-status-sub').textContent = cfg.status.sub;
+    document.getElementById('footer-mark').textContent = cfg.name;
+    document.getElementById('districts-sub').textContent = cfg.districtsSub;
+    document.getElementById('readout-sub').textContent = cfg.readoutSub;
+
+    var tickerHtml = cfg.ticker.map(function(t){
+      var parts = t.split(':');
+      return '<span><em>' + parts[0] + '</em>' + (parts[1]||'') + '</span>';
+    }).join('');
+    document.getElementById('ticker-track').innerHTML = tickerHtml + tickerHtml;
+
+    var districtsHtml = cfg.districts.map(function(d, i){
+      return '<article class="sign-card reveal sign-flicker" data-hue="' + d.hue + '" style="animation-delay:' + (i*1.1 + .3) + 's">' +
+        '<div class="tag">' + d.tag + '</div>' +
+        '<h3 class="display" style="font-size:1.05rem;">' + d.name + '</h3>' +
+        '<p>' + d.text + '</p>' +
+      '</article>';
+    }).join('');
+    var districtsGrid = document.getElementById('districts-grid');
+    districtsGrid.innerHTML = districtsHtml;
+
+    var readoutHtml = cfg.stats.map(function(s){
+      return '<div class="meter reveal">' +
+        '<div class="meter-top"><span class="label">' + s.label + '</span><span class="value hud">' + s.value + '</span></div>' +
+        '<div class="meter-track"><div class="meter-fill" data-target="' + s.target + '"></div></div>' +
+      '</div>';
+    }).join('');
+    var readoutGrid = document.getElementById('readout-grid');
+    readoutGrid.innerHTML = readoutHtml;
+
+    document.querySelectorAll('#city-nav a').forEach(function(a){
+      a.classList.toggle('active', a.dataset.route === key);
+    });
+
+    hubPage.hidden = true;
+    cityPage.hidden = false;
+    canvasActive = true;
+    resize();
+    if (reduceMotion) draw(t0); else requestAnimationFrame(draw);
+
+    revealNow(districtsGrid);
+    revealNow(readoutGrid);
+    if (enhance) wireDynamicHover(districtsGrid, '.sign-card');
+  }
+
+  function route(){
+    var hash = location.hash.replace('#','');
+    if (!hash || hash === 'home'){
+      if (currentRoute === 'home') return;
+      currentRoute = 'home';
+      transitionTo(renderHub);
+    } else {
+      if (currentRoute === hash) return;
+      currentRoute = hash;
+      transitionTo(function(){ renderCity(hash); });
+    }
+  }
+
+  function transitionTo(fn){
+    if (reduceMotion){ fn(); window.scrollTo(0,0); return; }
+    warp.classList.add('active');
+    setTimeout(function(){
+      fn();
+      window.scrollTo(0,0);
+      setTimeout(function(){ warp.classList.remove('active'); }, 30);
+    }, 320);
+  }
+
+  window.addEventListener('hashchange', route);
+  window.addEventListener('resize', function(){ if (canvasActive) resize(); });
+
+  if (heroMouseBind()) {}
+  function heroMouseBind(){
+    var heroEl = document.querySelector('.hero');
+    if (heroEl && enhance){
+      heroEl.addEventListener('mousemove', function(ev){
+        var r = heroEl.getBoundingClientRect();
+        targetX = (ev.clientX - r.left) / r.width;
+        targetY = (ev.clientY - r.top) / r.height;
+      });
+    }
+    return true;
+  }
+
+  route();
+
+  if (document.fonts && document.fonts.ready){
+    document.fonts.ready.then(function(){ if (reduceMotion && canvasActive) draw(t0); });
+  }
+
+  function pad(n){ return n < 10 ? '0'+n : ''+n; }
+  function tickClock(){
+    var el = document.getElementById('hud-time');
+    if (!el) return;
+    var d = new Date();
+    el.textContent = pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+  }
+  tickClock();
+  setInterval(tickClock, 1000);
+
+  /* ===================== static reveals (headlines) ===================== */
+  function splitWords(el){
+    var words = el.textContent.trim().split(/\s+/);
+    el.textContent = '';
+    words.forEach(function(word, i){
+      var span = document.createElement('span');
+      span.className = 'split-word';
+      span.style.transitionDelay = (i * 55) + 'ms';
+      span.textContent = word;
+      el.appendChild(span);
+      if (i < words.length - 1) el.appendChild(document.createTextNode(' '));
+    });
+  }
+  if (!reduceMotion){
+    document.querySelectorAll('.split').forEach(splitWords);
+  }
+  if (!reduceMotion){
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if (!e.isIntersecting) return;
+        e.target.classList.add('in-view');
+        e.target.querySelectorAll('.split-word').forEach(function(w){ w.classList.add('in-view'); });
+        io.unobserve(e.target);
+      });
+    }, {threshold:.25});
+    document.querySelectorAll('.section-head.reveal').forEach(function(el){ io.observe(el); });
+  } else {
+    document.querySelectorAll('.split-word, .section-head.reveal').forEach(function(el){ el.classList.add('in-view'); });
+  }
+
+  /* ===================== entrance loader ===================== */
+  if (loaderEl){
+    if (reduceMotion){
+      loaderEl.classList.add('is-hidden');
+    } else {
+      requestAnimationFrame(function(){ loaderFill.style.width = '100%'; });
+      setTimeout(function(){ loaderEl.classList.add('is-hidden'); }, 900);
+    }
+  }
+
+  /* ===================== premium pointer interactions ===================== */
+  if (enhance){
+    document.documentElement.classList.add('has-cursor');
+    var dot = document.getElementById('cursor-dot');
+    var ring = document.getElementById('cursor-ring');
+    var cx = -999, cy = -999, rx = -999, ry = -999;
+    var cursorSeen = false;
+
+    window.addEventListener('mousemove', function(ev){
+      cx = ev.clientX; cy = ev.clientY;
+      if (!cursorSeen){ rx = cx; ry = cy; cursorSeen = true; }
+      dot.style.opacity = 1; ring.style.opacity = 1;
+      dot.style.transform = 'translate(' + cx + 'px,' + cy + 'px)';
+    });
+    document.addEventListener('mouseleave', function(){ dot.style.opacity = 0; ring.style.opacity = 0; });
+
+    (function tickCursor(){
+      rx += (cx - rx) * .18;
+      ry += (cy - ry) * .18;
+      ring.style.transform = 'translate(' + rx + 'px,' + ry + 'px)';
+      requestAnimationFrame(tickCursor);
+    })();
+
+    document.querySelectorAll('a, button').forEach(function(el){
+      el.addEventListener('mouseenter', function(){ ring.classList.add('is-hover'); });
+      el.addEventListener('mouseleave', function(){ ring.classList.remove('is-hover'); });
+    });
+
+    document.querySelectorAll('.magnetic').forEach(function(el){
+      el.addEventListener('mousemove', function(ev){
+        var r = el.getBoundingClientRect();
+        var mx = ev.clientX - (r.left + r.width/2);
+        var my = ev.clientY - (r.top + r.height/2);
+        el.style.transform = 'translate(' + (mx*.35).toFixed(1) + 'px,' + (my*.35).toFixed(1) + 'px)';
+      });
+      el.addEventListener('mouseleave', function(){ el.style.transform = ''; });
+    });
+  }
+
+  function wireDynamicHover(container, selector){
+    container.addEventListener('mousemove', function(ev){
+      var card = ev.target.closest ? ev.target.closest(selector) : null;
+      if (!card) return;
+      var ring = document.getElementById('cursor-ring');
+      if (ring) ring.classList.add('is-hover');
+      if (selector === '.sign-card'){
+        var r = card.getBoundingClientRect();
+        var mx = (ev.clientX - r.left) / r.width;
+        var my = (ev.clientY - r.top) / r.height;
+        var rotY = (mx - .5) * 10;
+        var rotX = (.5 - my) * 10;
+        card.style.transform = 'perspective(700px) rotateX(' + rotX.toFixed(2) + 'deg) rotateY(' + rotY.toFixed(2) + 'deg) translateY(-3px)';
+        card.style.setProperty('--mx', (mx*100).toFixed(1) + '%');
+        card.style.setProperty('--my', (my*100).toFixed(1) + '%');
+      } else {
+        card.style.transform = 'translateY(-4px)';
+      }
+    });
+    container.addEventListener('mouseleave', function(){
+      var ring = document.getElementById('cursor-ring');
+      if (ring) ring.classList.remove('is-hover');
+      container.querySelectorAll(selector).forEach(function(c){ c.style.transform = ''; });
+    });
+  }
+})();
+</script>

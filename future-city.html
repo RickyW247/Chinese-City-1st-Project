@@ -1,0 +1,626 @@
+<title>Future City</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;700;800;900&family=Ma+Shan+Zheng&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --void:#070911;
+    --ink:#10141f;
+    --ink-2:#171e30;
+    --line:#242c42;
+    --mist:#c7cfe0;
+    --fog:#7580a0;
+    --cyan:#4de8ff;
+    --crimson:#ff3d64;
+    --gold:#d3a866;
+    --font-display:'Unbounded',system-ui,sans-serif;
+    --font-hanzi:'Ma Shan Zheng',serif;
+    --font-body:'Manrope',system-ui,sans-serif;
+    --font-mono:'JetBrains Mono',ui-monospace,monospace;
+  }
+
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  @media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto;} }
+
+  body{
+    margin:0;
+    background:var(--void);
+    color:var(--mist);
+    font-family:var(--font-body);
+    overflow-x:hidden;
+    position:relative;
+  }
+
+  ::selection{ background:var(--crimson); color:var(--void); }
+
+  a{ color:inherit; }
+  :focus-visible{ outline:2px solid var(--cyan); outline-offset:3px; }
+
+  .noise{
+    position:fixed; inset:0; z-index:2; pointer-events:none;
+    opacity:.035; mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  }
+
+  .cursor-glow{
+    position:fixed; width:420px; height:420px; border-radius:50%;
+    background:radial-gradient(circle, rgba(77,232,255,.10), transparent 70%);
+    transform:translate(-50%,-50%); pointer-events:none; z-index:3;
+    mix-blend-mode:screen; will-change:transform; transition:opacity .4s;
+  }
+
+  #dragon{
+    position:absolute; top:0; left:0; width:100%; z-index:1;
+    pointer-events:none; mix-blend-mode:screen; opacity:.6;
+  }
+  #dragon path{
+    fill:none; stroke:var(--cyan); stroke-width:2.4; filter:url(#glow);
+  }
+  #dragonHead{ filter:url(#glow); }
+
+  nav{
+    position:fixed; top:0; left:0; right:0; z-index:20;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:22px clamp(20px,4vw,56px);
+    font-family:var(--font-mono);
+    backdrop-filter:blur(6px);
+    background:linear-gradient(to bottom, rgba(7,9,17,.75), transparent);
+  }
+  .brand{ display:flex; align-items:baseline; gap:10px; text-decoration:none; }
+  .brand-glyph{ font-family:var(--font-hanzi); font-size:1.6rem; color:var(--crimson); line-height:1; }
+  .brand-word{ font-size:.72rem; letter-spacing:.28em; color:var(--mist); }
+  .nav-links{ display:flex; gap:clamp(16px,3vw,34px); list-style:none; margin:0; padding:0; }
+  .nav-links a{ text-decoration:none; font-size:.7rem; letter-spacing:.2em; color:var(--fog); transition:color .25s; }
+  .nav-links a:hover{ color:var(--cyan); }
+
+  section{ position:relative; z-index:2; }
+
+  /* ---------- HERO ---------- */
+  .hero{
+    position:relative; height:100svh; min-height:640px; overflow:hidden;
+    display:flex; align-items:flex-end;
+  }
+  .hero canvas{ position:absolute; inset:0; width:100%; height:100%; z-index:0; }
+  .hero::after{
+    content:""; position:absolute; inset:0; z-index:1;
+    background:linear-gradient(to top, var(--void) 0%, rgba(7,9,17,.15) 38%, rgba(7,9,17,.55) 100%);
+  }
+  .hero-inner{
+    position:relative; z-index:2; width:100%;
+    padding:0 clamp(20px,4vw,56px) clamp(64px,9vw,110px);
+  }
+  .hero-kicker{
+    display:inline-flex; align-items:center; gap:10px;
+    font-family:var(--font-mono); font-size:.72rem; letter-spacing:.18em;
+    color:var(--gold); margin-bottom:22px; text-transform:uppercase;
+  }
+  .hero-kicker::before{ content:""; width:26px; height:1px; background:var(--gold); }
+  h1.hero-title{
+    font-family:var(--font-display); font-weight:800;
+    font-size:clamp(2.6rem, 8vw, 6.6rem);
+    line-height:.98; margin:0 0 26px; text-wrap:balance;
+    letter-spacing:-.01em; max-width:16ch;
+  }
+  h1.hero-title em{
+    font-style:normal; color:transparent;
+    background:linear-gradient(100deg, var(--cyan), var(--crimson) 70%);
+    -webkit-background-clip:text; background-clip:text;
+  }
+  .hero-sub{
+    max-width:46ch; font-size:clamp(.98rem,1.4vw,1.15rem); color:var(--mist);
+    line-height:1.65; font-weight:400;
+  }
+  .hero-hud{
+    position:absolute; z-index:3; font-family:var(--font-mono);
+    font-size:.66rem; letter-spacing:.1em; color:var(--fog); text-transform:uppercase;
+  }
+  .hud-tl{ top:96px; left:clamp(20px,4vw,56px); }
+  .hud-tr{ top:96px; right:clamp(20px,4vw,56px); text-align:right; }
+  .hud-br{ bottom:32px; right:clamp(20px,4vw,56px); text-align:right; }
+  .scroll-cue{
+    position:absolute; z-index:3; bottom:34px; left:clamp(20px,4vw,56px);
+    display:flex; flex-direction:column; align-items:center; gap:10px;
+    font-family:var(--font-mono); font-size:.66rem; letter-spacing:.25em; color:var(--fog);
+  }
+  .scroll-cue .rail{ width:1px; height:46px; background:linear-gradient(var(--cyan), transparent); overflow:hidden; }
+  .scroll-cue .rail i{ display:block; width:100%; height:14px; background:var(--cyan); animation:railmove 2.1s ease-in-out infinite; }
+  @keyframes railmove{ 0%{ transform:translateY(-14px);} 100%{ transform:translateY(46px);} }
+  @media (prefers-reduced-motion: reduce){ .scroll-cue .rail i{ animation:none; } }
+
+  /* ---------- shared section chrome ---------- */
+  .wrap{ max-width:1280px; margin:0 auto; padding:0 clamp(20px,4vw,56px); }
+  .eyebrow{
+    font-family:var(--font-mono); font-size:.72rem; letter-spacing:.2em;
+    color:var(--gold); text-transform:uppercase; display:flex; align-items:center; gap:10px;
+  }
+  .eyebrow::before{ content:""; width:26px; height:1px; background:var(--gold); }
+  .sec-title{
+    font-family:var(--font-display); font-weight:700;
+    font-size:clamp(2rem,4.2vw,3.4rem); line-height:1.05; margin:18px 0 0;
+    max-width:20ch; text-wrap:balance;
+  }
+  .sec-lede{
+    max-width:58ch; margin:22px 0 0; color:var(--fog); font-size:1.02rem; line-height:1.7;
+  }
+
+  [data-reveal]{ opacity:0; transform:translateY(28px); transition:opacity .8s ease, transform .8s ease; }
+  [data-reveal].in-view{ opacity:1; transform:none; }
+  @media (prefers-reduced-motion: reduce){ [data-reveal]{ opacity:1; transform:none; transition:none; } }
+
+  /* ---------- DISTRICTS ---------- */
+  .districts{ padding:clamp(90px,12vw,150px) 0 clamp(60px,8vw,100px); }
+  .grid{
+    margin-top:56px; display:grid; grid-template-columns:repeat(3,1fr); gap:1px;
+    background:var(--line); border:1px solid var(--line);
+  }
+  @media (max-width:920px){ .grid{ grid-template-columns:repeat(2,1fr); } }
+  @media (max-width:600px){ .grid{ grid-template-columns:1fr; } }
+
+  .card{
+    position:relative; background:var(--ink); padding:38px 30px 32px;
+    min-height:320px; overflow:hidden; text-decoration:none; color:inherit;
+    display:flex; flex-direction:column; justify-content:flex-end;
+    transition:background .4s ease;
+  }
+  .card:hover, .card:focus-visible{ background:var(--ink-2); }
+  .card-glyph{
+    position:absolute; top:-.15em; right:6px; font-family:var(--font-hanzi);
+    font-size:9rem; line-height:1; color:var(--mist); opacity:.055;
+    transition:opacity .5s ease, transform .5s ease; pointer-events:none;
+  }
+  .card:hover .card-glyph{ opacity:.11; transform:scale(1.05); }
+  .card-glow{
+    position:absolute; inset:auto -40% -60% auto; width:70%; aspect-ratio:1;
+    border-radius:50%; filter:blur(60px); opacity:.35; pointer-events:none;
+    transition:opacity .5s ease;
+  }
+  .card:hover .card-glow{ opacity:.6; }
+  .card-tag{
+    font-family:var(--font-mono); font-size:.62rem; letter-spacing:.16em;
+    color:var(--fog); text-transform:uppercase; margin-bottom:14px; position:relative;
+  }
+  .card-title{
+    font-family:var(--font-display); font-weight:700; font-size:1.28rem;
+    margin:0 0 12px; position:relative; letter-spacing:-.01em;
+  }
+  .card-copy{ font-size:.92rem; line-height:1.6; color:var(--fog); position:relative; margin:0; max-width:34ch; }
+  .card-num{
+    position:absolute; top:24px; left:30px; font-family:var(--font-mono);
+    font-size:.68rem; color:var(--line); letter-spacing:.1em;
+  }
+
+  /* ---------- MANIFESTO ---------- */
+  .manifesto{
+    padding:clamp(90px,12vw,150px) 0; border-top:1px solid var(--line); border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg, transparent, rgba(211,168,102,.03), transparent);
+  }
+  .manifesto .wrap{ display:grid; grid-template-columns:.85fr 1.15fr; gap:clamp(30px,6vw,90px); align-items:start; }
+  @media (max-width:860px){ .manifesto .wrap{ grid-template-columns:1fr; } }
+  .manifesto-mark{
+    font-family:var(--font-hanzi); font-size:clamp(5rem,11vw,9rem); line-height:1;
+    color:var(--crimson); text-shadow:0 0 60px rgba(255,61,100,.35);
+  }
+  .manifesto-mark small{
+    display:block; font-family:var(--font-mono); font-size:.7rem; letter-spacing:.2em;
+    color:var(--fog); margin-top:18px; text-transform:uppercase;
+  }
+  .manifesto-statement{
+    font-family:var(--font-display); font-weight:600; font-size:clamp(1.4rem,2.6vw,2rem);
+    line-height:1.35; margin:0 0 26px; text-wrap:balance; color:#eef1f8;
+  }
+  .manifesto-body{ color:var(--fog); font-size:1.02rem; line-height:1.75; max-width:56ch; }
+
+  /* ---------- ENTER / CTA ---------- */
+  .enter{ padding:clamp(110px,16vw,190px) 0; text-align:center; position:relative; }
+  .enter-eyebrow{ justify-content:center; }
+  .enter-eyebrow::before{ display:none; }
+  .enter h2{
+    font-family:var(--font-display); font-weight:800; letter-spacing:-.01em;
+    font-size:clamp(2.4rem,7vw,5.4rem); margin:20px 0 22px; line-height:1;
+  }
+  .enter p{ color:var(--fog); max-width:44ch; margin:0 auto 42px; line-height:1.7; }
+  .enter-link{
+    display:inline-flex; align-items:center; gap:14px; text-decoration:none;
+    font-family:var(--font-mono); font-size:.82rem; letter-spacing:.18em; text-transform:uppercase;
+    color:var(--void); background:var(--cyan); padding:18px 30px; border-radius:2px;
+    transition:transform .3s ease, box-shadow .3s ease; box-shadow:0 0 0 rgba(77,232,255,0);
+  }
+  .enter-link:hover{ transform:translateY(-3px); box-shadow:0 14px 40px -10px rgba(77,232,255,.5); }
+
+  footer{
+    border-top:1px solid var(--line); padding:34px clamp(20px,4vw,56px);
+    display:flex; flex-wrap:wrap; gap:16px; align-items:center; justify-content:space-between;
+    font-family:var(--font-mono); font-size:.68rem; color:var(--fog); letter-spacing:.06em;
+  }
+  footer .brand-word{ color:var(--mist); }
+</style>
+
+<svg width="0" height="0" style="position:absolute">
+  <filter id="glow" x="-200%" y="-200%" width="500%" height="500%">
+    <feGaussianBlur stdDeviation="4.2" result="blur"/>
+    <feMerge>
+      <feMergeNode in="blur"/>
+      <feMergeNode in="SourceGraphic"/>
+    </feMerge>
+  </filter>
+</svg>
+
+<div class="noise"></div>
+<div class="cursor-glow" id="cursorGlow"></div>
+<svg id="dragon" aria-hidden="true"><path id="dragonPath"/><g id="dragonHead"></g></svg>
+
+<nav>
+  <a class="brand" href="#top">
+    <span class="brand-glyph">未来城</span>
+    <span class="brand-word">FUTURE&nbsp;CITY</span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="#districts">Districts</a></li>
+    <li><a href="#manifesto">Manifesto</a></li>
+    <li><a href="#enter">Enter</a></li>
+  </ul>
+</nav>
+
+<header class="hero" id="top">
+  <canvas id="cityscape"></canvas>
+  <span class="hero-hud hud-tl">北纬 39.90&deg; 东经 116.41&deg;<br>Coordinates lost in the fog</span>
+  <span class="hero-hud hud-tr">Year 2087<br>Rain / Dragon: awake</span>
+  <div class="hero-inner">
+    <span class="hero-kicker">未来城 &mdash; a district that refused to choose</span>
+    <h1 class="hero-title">The city that<br><em>never forgot</em> its dragons</h1>
+    <p class="hero-sub">Past the last checkpoint, paper lanterns still hang beside the fibre that feeds them light. The old river dragon never left &mdash; it just learned the grid.</p>
+  </div>
+  <div class="scroll-cue"><span>SCROLL</span><span class="rail"><i></i></span></div>
+</header>
+
+<section class="districts" id="districts">
+  <div class="wrap">
+    <div data-reveal>
+      <span class="eyebrow">六个坊 &middot; six quarters</span>
+      <h2 class="sec-title">A city built from contradictions</h2>
+      <p class="sec-lede">No quarter of 未来城 chose between what it was and what it's becoming. It kept both, and wired them together.</p>
+    </div>
+    <div class="grid" data-reveal>
+      <a class="card" href="#" tabindex="0" style="--accent:var(--crimson)">
+        <span class="card-num">01</span>
+        <span class="card-glyph">灯</span>
+        <span class="card-glow" style="background:var(--crimson)"></span>
+        <span class="card-tag">Street level</span>
+        <h3 class="card-title">Lantern Quarter</h3>
+        <p class="card-copy">Every lantern here runs on the same grid as the skyline above, and still burns the same red it always has.</p>
+      </a>
+      <a class="card" href="#" tabindex="0" style="--accent:var(--gold)">
+        <span class="card-num">02</span>
+        <span class="card-glyph">市</span>
+        <span class="card-glow" style="background:var(--gold)"></span>
+        <span class="card-tag">Canal 7</span>
+        <h3 class="card-title">The Floating Market</h3>
+        <p class="card-copy">Sampans stacked with printed silk and quantum tea drift under bridge-light, sold by the same families for six generations.</p>
+      </a>
+      <a class="card" href="#" tabindex="0" style="--accent:var(--cyan)">
+        <span class="card-num">03</span>
+        <span class="card-glyph">龙</span>
+        <span class="card-glow" style="background:var(--cyan)"></span>
+        <span class="card-tag">Signal source</span>
+        <h3 class="card-title">The River Dragon</h3>
+        <p class="card-copy">Rebuilt in fibre and fog after the flood of '61, it still answers only to its old, unspoken name.</p>
+      </a>
+      <a class="card" href="#" tabindex="0" style="--accent:var(--cyan)">
+        <span class="card-num">04</span>
+        <span class="card-glyph">空</span>
+        <span class="card-glow" style="background:var(--cyan)"></span>
+        <span class="card-tag">Altitude 400m</span>
+        <h3 class="card-title">Sky Harbor</h3>
+        <p class="card-copy">Freight junks folded their sails decades ago. What replaced them still bows to the wind before it leaves port.</p>
+      </a>
+      <a class="card" href="#" tabindex="0" style="--accent:var(--gold)">
+        <span class="card-num">05</span>
+        <span class="card-glyph">塔</span>
+        <span class="card-glow" style="background:var(--gold)"></span>
+        <span class="card-tag">Server level &minus;12</span>
+        <h3 class="card-title">Temple Towers</h3>
+        <p class="card-copy">Pagoda roofs stacked over server farms. Incense smoke still finds its way past the antenna arrays.</p>
+      </a>
+      <a class="card" href="#" tabindex="0" style="--accent:var(--crimson)">
+        <span class="card-num">06</span>
+        <span class="card-glyph">墨</span>
+        <span class="card-glow" style="background:var(--crimson)"></span>
+        <span class="card-tag">Auto-calligraphy</span>
+        <h3 class="card-title">The Ink Canals</h3>
+        <p class="card-copy">Brushes once painted these waterways by hand. Now the waterways paint themselves, in the same strokes.</p>
+      </a>
+    </div>
+  </div>
+</section>
+
+<section class="manifesto" id="manifesto">
+  <div class="wrap">
+    <div data-reveal>
+      <div class="manifesto-mark">新旧共生<small>Old and new, one breath</small></div>
+    </div>
+    <div data-reveal>
+      <span class="eyebrow">Manifesto</span>
+      <p class="manifesto-statement">未来城 was never a city that arrived from the future. It is one that refused to leave the past behind &mdash; and dragged it, glowing, into tomorrow.</p>
+      <p class="manifesto-body">Somewhere between a temple bell and a server fan, its citizens found a version of the future that still remembers where the good tea is. This is a working study in what a city keeps when it modernizes on its own terms, rather than the one handed to it by someone else's skyline.</p>
+    </div>
+  </div>
+</section>
+
+<section class="enter" id="enter">
+  <div class="wrap">
+    <span class="eyebrow enter-eyebrow">未来城 &middot; open after dark</span>
+    <h2 data-reveal>Enter 未来城</h2>
+    <p data-reveal>There is no map. Follow the lanterns downhill, and let the dragon take you the rest of the way.</p>
+    <a class="enter-link" href="#top" data-reveal>Begin the descent &darr;</a>
+  </div>
+</section>
+
+<footer>
+  <span><span class="brand-word">未来城 &middot; FUTURE CITY</span> &mdash; a speculative district. Traditional culture, future-built.</span>
+  <span>YR 2087 &middot; N39.90&deg; E116.41&deg; &middot; DRAGON: AWAKE</span>
+</footer>
+
+<script>
+(function(){
+  "use strict";
+  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---------- reveal on scroll ---------- */
+  var revealEls = document.querySelectorAll('[data-reveal]');
+  if('IntersectionObserver' in window){
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting){ e.target.classList.add('in-view'); io.unobserve(e.target); }
+      });
+    }, { threshold:.15 });
+    revealEls.forEach(function(el){ io.observe(el); });
+  } else {
+    revealEls.forEach(function(el){ el.classList.add('in-view'); });
+  }
+
+  /* ---------- cursor glow ---------- */
+  var glow = document.getElementById('cursorGlow');
+  var fine = window.matchMedia('(pointer:fine)').matches;
+  if(!fine || reduceMotion){
+    glow.style.display = 'none';
+  } else {
+    var gx=innerWidth/2, gy=innerHeight/2, cx=gx, cy=gy;
+    window.addEventListener('mousemove', function(e){ gx=e.clientX; gy=e.clientY; });
+    (function loop(){
+      cx += (gx-cx)*.12; cy += (gy-cy)*.12;
+      glow.style.transform = 'translate(' + cx + 'px,' + cy + 'px)';
+      requestAnimationFrame(loop);
+    })();
+  }
+
+  /* ---------- dragon spine ---------- */
+  var svg = document.getElementById('dragon');
+  var path = document.getElementById('dragonPath');
+  var head = document.getElementById('dragonHead');
+  head.innerHTML =
+    '<circle r="5" fill="#4de8ff"></circle>' +
+    '<path d="M0,0 C10,-6 22,-10 30,-4 C22,-2 12,2 0,0 Z" fill="#4de8ff" opacity=".85"></path>' +
+    '<path d="M-4,-3 C-2,-14 6,-20 12,-22 C8,-12 2,-8 -4,-3 Z" fill="#ff3d64" opacity=".8"></path>';
+  var pathLen = 0;
+  var VBW = 1000;
+
+  function buildDragon(){
+    var h = document.documentElement.scrollHeight;
+    svg.setAttribute('viewBox', '0 0 ' + VBW + ' ' + h);
+    svg.setAttribute('preserveAspectRatio', 'none');
+    svg.style.height = h + 'px';
+    var d = '', steps = Math.max(20, Math.round(h/36));
+    for(var i=0;i<=steps;i++){
+      var t = i/steps;
+      var y = t*h;
+      var taper = Math.sin(Math.min(t*3,1)*Math.PI/2) * Math.sin(Math.min((1-t)*3,1)*Math.PI/2);
+      var amp = 190*taper + 60;
+      var x = VBW/2 + Math.sin(t*Math.PI*5.4)*amp;
+      d += (i===0?'M':'L') + x.toFixed(1) + ' ' + y.toFixed(1) + ' ';
+    }
+    path.setAttribute('d', d);
+    pathLen = path.getTotalLength();
+    path.style.strokeDasharray = pathLen;
+    path.style.strokeDashoffset = pathLen;
+    positionHead(0);
+  }
+
+  function positionHead(frac){
+    var p = path.getPointAtLength(pathLen*frac);
+    var p2 = path.getPointAtLength(Math.min(pathLen, pathLen*frac + 3));
+    var ang = Math.atan2(p2.y-p.y, p2.x-p.x) * 180/Math.PI;
+    head.setAttribute('transform', 'translate(' + p.x + ',' + p.y + ') rotate(' + (ang+90) + ')');
+  }
+
+  function onScroll(){
+    var max = document.documentElement.scrollHeight - innerHeight;
+    var frac = max>0 ? Math.min(1, Math.max(0, scrollY/max)) : 0;
+    if(!reduceMotion){
+      path.style.strokeDashoffset = pathLen*(1-frac);
+      positionHead(frac);
+    }
+  }
+
+  var resizeTimer;
+  function onResize(){
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function(){ buildDragon(); onScroll(); }, 150);
+  }
+
+  window.addEventListener('scroll', onScroll, { passive:true });
+  window.addEventListener('resize', onResize);
+  if(document.fonts && document.fonts.ready){ document.fonts.ready.then(function(){ buildDragon(); onScroll(); }); }
+  buildDragon();
+  if(reduceMotion){ path.style.strokeDashoffset = 0; positionHead(.999); }
+  onScroll();
+
+  /* ---------- hero cityscape canvas ---------- */
+  var canvas = document.getElementById('cityscape');
+  var ctx = canvas.getContext('2d');
+  var hero = document.querySelector('.hero');
+  var DPR = Math.min(2, window.devicePixelRatio || 1);
+  var W=0, H=0;
+
+  function seedRand(seed){
+    return function(){ seed = (seed*1103515245+12345) & 0x7fffffff; return seed/0x7fffffff; };
+  }
+
+  var farTowers, nearTowers, lanterns, airships;
+
+  function buildScene(){
+    var rnd = seedRand(42);
+    farTowers = [];
+    var x=0;
+    while(x < W+60){
+      var w = 22 + rnd()*30;
+      farTowers.push({ x:x, w:w, h: 60 + rnd()*H*0.28 });
+      x += w + rnd()*10;
+    }
+    nearTowers = [];
+    x = -20;
+    var rnd2 = seedRand(99);
+    while(x < W+80){
+      var w2 = 30 + rnd2()*46;
+      var winCols = Math.max(2, Math.round(w2/9));
+      var winRows = Math.max(4, Math.round((90+rnd2()*H*0.4)/14));
+      var windows = [];
+      for(var r=0;r<winRows;r++){ for(var c=0;c<winCols;c++){
+        windows.push({ c:c, r:r, on: rnd2() > .45, hue: rnd2() > .6 ? 'crimson' : (rnd2()>.5?'gold':'cyan'), flick: rnd2() });
+      }}
+      nearTowers.push({ x:x, w:w2, h: 90+ (winRows*14), cols:winCols, rows:winRows, windows:windows });
+      x += w2 + 14 + rnd2()*18;
+    }
+    lanterns = [];
+    for(var i=0;i<9;i++){ lanterns.push({ x: (i+.5)*(W/9) + (Math.random()-.5)*40, y: H*0.86 + Math.random()*30, r: 6+Math.random()*5, phase: Math.random()*10 }); }
+    airships = [
+      { x:-100, y:H*0.16, s:1, v:.18 },
+      { x:W*0.5, y:H*0.08, s:.7, v:.11 },
+      { x:W*1.3, y:H*0.24, s:.55, v:.14 }
+    ];
+  }
+
+  function resizeCanvas(){
+    var r = hero.getBoundingClientRect();
+    W = r.width; H = r.height;
+    canvas.width = W*DPR; canvas.height = H*DPR;
+    canvas.style.width = W+'px'; canvas.style.height = H+'px';
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+    buildScene();
+  }
+
+  function draw(t){
+    ctx.clearRect(0,0,W,H);
+
+    var sky = ctx.createLinearGradient(0,0,0,H);
+    sky.addColorStop(0,'#080a14');
+    sky.addColorStop(.55,'#0d1120');
+    sky.addColorStop(.82,'#1a1330');
+    sky.addColorStop(1,'#221226');
+    ctx.fillStyle = sky; ctx.fillRect(0,0,W,H);
+
+    // horizon glow
+    var glow = ctx.createRadialGradient(W*0.68,H*0.62,10,W*0.68,H*0.62,H*0.55);
+    glow.addColorStop(0,'rgba(255,61,100,.16)');
+    glow.addColorStop(1,'rgba(255,61,100,0)');
+    ctx.fillStyle = glow; ctx.fillRect(0,0,W,H);
+    var glow2 = ctx.createRadialGradient(W*0.28,H*0.5,10,W*0.28,H*0.5,H*0.5);
+    glow2.addColorStop(0,'rgba(77,232,255,.10)');
+    glow2.addColorStop(1,'rgba(77,232,255,0)');
+    ctx.fillStyle = glow2; ctx.fillRect(0,0,W,H);
+
+    // airships
+    airships.forEach(function(a){
+      a.x += a.v * (reduceMotion?0:1);
+      if(a.x > W+140) a.x = -140;
+      ctx.save();
+      ctx.translate(a.x, a.y + Math.sin(t/1400 + a.x)*4);
+      ctx.scale(a.s,a.s);
+      ctx.fillStyle = 'rgba(180,200,230,.5)';
+      ctx.beginPath();
+      ctx.ellipse(0,0,46,10,0,0,Math.PI*2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(77,232,255,.8)';
+      ctx.fillRect(-30,-2,6,4);
+      ctx.fillRect(-6,-2,6,4);
+      ctx.fillRect(18,-2,6,4);
+      ctx.restore();
+    });
+
+    // far towers (parallax slow)
+    var pf = (reduceMotion?0:scrollY*0.05);
+    ctx.fillStyle = 'rgba(20,24,42,.9)';
+    farTowers.forEach(function(b){
+      var by = H - b.h + pf*0.2;
+      ctx.fillRect(b.x - (reduceMotion?0:pf*0.02), by, b.w, b.h+40);
+    });
+
+    // near towers with lit windows
+    var pn = (reduceMotion?0:scrollY*0.12);
+    nearTowers.forEach(function(b){
+      var bx = b.x - pn*0.05;
+      var by = H - b.h;
+      ctx.fillStyle = '#0b0e1a';
+      ctx.fillRect(bx, by, b.w, b.h+60);
+      var cw = b.w/b.cols;
+      b.windows.forEach(function(win){
+        if(!win.on) return;
+        var flick = reduceMotion ? 1 : (0.55 + 0.45*Math.sin(t/500 + win.flick*40));
+        var color = win.hue==='crimson' ? '255,61,100' : win.hue==='gold' ? '211,168,102' : '77,232,255';
+        ctx.fillStyle = 'rgba(' + color + ',' + (0.5*flick+0.15) + ')';
+        ctx.fillRect(bx + win.c*cw + 2, by + win.r*14 + 6, cw-4, 6);
+      });
+    });
+
+    // pagoda silhouette foreground
+    ctx.fillStyle = '#05060c';
+    var px = W*0.5, py = H;
+    function roof(cx, cy, rw, rh){
+      ctx.beginPath();
+      ctx.moveTo(cx-rw, cy);
+      ctx.quadraticCurveTo(cx, cy-rh*1.6, cx+rw, cy);
+      ctx.quadraticCurveTo(cx, cy-rh*0.6, cx-rw, cy);
+      ctx.fill();
+    }
+    var tiers = 4;
+    for(var i=0;i<tiers;i++){
+      var w = 150 - i*30, cy = H - i*46;
+      ctx.fillRect(px-w*0.35, cy-40, w*0.7, 46);
+      roof(px, cy-38, w*0.55, 20);
+    }
+
+    // lanterns
+    lanterns.forEach(function(l){
+      var yy = l.y + Math.sin(t/900 + l.phase)*3;
+      var lg = ctx.createRadialGradient(l.x,yy,0,l.x,yy,l.r*4);
+      lg.addColorStop(0,'rgba(255,61,100,.9)');
+      lg.addColorStop(1,'rgba(255,61,100,0)');
+      ctx.fillStyle = lg;
+      ctx.beginPath(); ctx.arc(l.x,yy,l.r*4,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#ff3d64';
+      ctx.beginPath(); ctx.ellipse(l.x,yy,l.r*0.7,l.r,0,0,Math.PI*2); ctx.fill();
+    });
+
+    // rain
+    if(!reduceMotion){
+      ctx.strokeStyle = 'rgba(180,200,230,.18)';
+      ctx.lineWidth = 1;
+      for(var i=0;i<70;i++){
+        var rx = (i*97 + (t/14)) % (W+40) - 20;
+        var ry = (i*53 + (t/2.4)) % H;
+        ctx.beginPath(); ctx.moveTo(rx,ry); ctx.lineTo(rx-3,ry+16); ctx.stroke();
+      }
+    }
+  }
+
+  function loop(t){
+    draw(t||0);
+    if(!reduceMotion){ requestAnimationFrame(loop); }
+  }
+
+  resizeCanvas();
+  window.addEventListener('resize', function(){ resizeCanvas(); });
+  if(reduceMotion){ draw(0); } else { requestAnimationFrame(loop); }
+
+})();
+</script>

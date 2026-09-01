@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>未来城 · FUTURE CITY — Observation Deck</title>
+<meta name="description" content="未来城 — a speculative Chinese metropolis where lantern-light and fibre share the same grid. Observation deck archive.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;700;800;900&family=Ma+Shan+Zheng&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'><rect width='48' height='48' rx='11' fill='%2305060d'/><path d='M33 15C41 19 43 29 37 35 31 41 19 41 13 35 7 29 9 19 16 16' fill='none' stroke='%234de8ff' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/><path d='M16 16C22 13 29 15 31 21 33 27 29 32 24 31' fill='none' stroke='%234de8ff' stroke-width='3' stroke-linecap='round' opacity='.75'/><path d='M29 10C35 6 43 7 45 12 41 15 34 15 30 13Z' fill='%234de8ff'/><path d='M30 9C28 4 25 2 21 2' fill='none' stroke='%23ff3d64' stroke-width='2.6' stroke-linecap='round'/><path d='M44 12C48 10 49 5 47 2' fill='none' stroke='%23f0b45c' stroke-width='2' stroke-linecap='round'/><circle cx='36' cy='11' r='1.7' fill='%2305060d'/></svg>">
+<link rel="stylesheet" href="assets/site.css">
+<link rel="stylesheet" href="assets/admin.css">
+</head>
+<body style="--accent:#4de8ff; --accent-2:#9a6bff">
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <filter id="glow" x="-200%" y="-200%" width="500%" height="500%">
+    <feGaussianBlur stdDeviation="4" result="blur"/>
+    <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+  </filter>
+</svg>
+
+<div class="loader" id="loader">
+  <span class="lglyph" style="color:var(--crimson)">未来城</span>
+  <span class="lmark">Synchronizing lantern grid</span>
+  <div class="lbar"><div class="lfill" id="loaderFill"></div></div>
+</div>
+
+<canvas id="ambient" aria-hidden="true"></canvas>
+<div class="noise" aria-hidden="true"></div>
+<div class="scanlines" aria-hidden="true"></div>
+<div class="cursor-glow" id="cursorGlow" aria-hidden="true"></div>
+<div class="cursor-ring" id="cursorRing" aria-hidden="true"></div>
+<svg id="dragon" aria-hidden="true"><path id="dragonPath"/><g id="dragonHead"></g></svg>
+
+<audio id="track" loop preload="none">
+  <source src="Tobu%20Song%20Copyrighted.mp4" type="audio/mp4">
+</audio>
+
+<nav class="topbar">
+  <a class="brand" href="index.html">
+    <svg class="logo" viewBox="0 0 48 48" aria-hidden="true"><path class="coil" pathLength="150" d="M33 15 C41 19 43 29 37 35 C31 41 19 41 13 35 C7 29 9 19 16 16"/><path class="coil coil-inner" pathLength="150" d="M16 16 C22 13 29 15 31 21 C33 27 29 32 24 31 C20 30 18 26 20 23"/><g class="head"><path class="jaw" d="M29 10 C35 6 43 7 45 12 C41 15 34 15 30 13 Z"/><path class="horn" d="M30 9 C28 4 25 2 21 2"/><path class="horn" d="M34 8 C33 4 31 2 28 1" opacity=".7"/><path class="whisk" d="M44 12 C48 10 49 5 47 2"/><path class="whisk" d="M44 14 C47 17 47 21 45 24"/><circle class="eye" cx="36" cy="11" r="1.5"/></g><circle class="spark" cx="24" cy="24" r="1.6"/></svg>
+    <span class="brand-name">未来城</span>
+    <span class="brand-word">FUTURE&nbsp;CITY</span>
+  </a>
+  <div class="nav-right">
+    <ul class="nav-links">
+      <li class="nav-menu" id="navMenu">
+        <button type="button" aria-expanded="false">Quarters
+          <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M2 4l4 4 4-4"/></svg>
+        </button>
+      </li>
+      <li><a href="#districts">Districts</a></li>
+      <li><a href="#atlas">The Plate</a></li>
+      <li><a href="#readout">Readout</a></li>
+      <li><a href="#manifesto">Manifesto</a></li>
+    </ul>
+    <button class="audio-btn" id="audioBtn" type="button" aria-pressed="false">
+      <span class="eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+      <span id="audioLabel">Sound off</span>
+    </button>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <div class="hero-media" id="heroMedia">
+    <img src="China%20Futuristic%20City.png" alt="Night view over 未来城: neon hanzi signs, a luminous blue dragon hologram above the skyline, pagoda towers, waterfalls and a lantern-lit river, seen from a temple balcony.">
+  </div>
+  <canvas class="hero-rain" id="heroRain" aria-hidden="true"></canvas>
+
+  <div class="hud-panel hud-tl">
+    <b id="hudTime">--:--:--</b>
+    LOCAL TIME · SECTOR 未 · DECK 41
+  </div>
+  <div class="hud-panel hud-tr">
+    <b>DRAGON: AWAKE</b>
+    LIGHT RAIN · WIND 6KT · 41,208 LANTERNS LIT
+  </div>
+
+  <div class="hero-inner">
+    <span class="hero-kicker">北纬 39.90° 东经 116.41° — Year 2087</span>
+    <h1 class="hero-title">
+      <span class="split-line"><span class="split-word">The city that</span></span>
+      <span class="split-line"><span class="split-word"><em>never forgot</em></span></span>
+      <span class="split-line"><span class="split-word">its dragons</span></span>
+    </h1>
+    <p class="hero-sub">Past the last checkpoint, paper lanterns still hang beside the fibre that feeds them light. The old river dragon never left — it just learned the grid.</p>
+  </div>
+
+  <a class="scroll-cue" href="#districts"><span>DESCEND</span><span class="rail"><i></i></span></a>
+</header>
+
+<div class="ticker" aria-hidden="true"><div class="ticker-track" id="tickerTrack"></div></div>
+
+<section class="districts" id="districts">
+  <div class="wrap">
+    <div data-reveal>
+      <span class="eyebrow">六个坊 · six quarters</span>
+      <h2 class="sec-title">A city built from contradictions</h2>
+      <p class="sec-lede">No quarter of 未来城 chose between what it was and what it is becoming. It kept both, and wired them together. Each one keeps its own records — open a quarter to read them.</p>
+    </div>
+    <div class="grid" data-reveal>
+
+      <a class="card" href="lantern-quarter.html" style="--accent:#ff3d64">
+        <span class="card-num">01</span>
+        <span class="card-glyph">灯</span>
+        <span class="card-glow"></span>
+        <span class="card-tag">Street level</span>
+        <h3 class="card-title">Lantern Quarter</h3>
+        <p class="card-copy">Every lantern here runs on the same grid as the skyline above, and still burns the same red it always has.</p>
+        <span class="card-go">Enter the quarter →</span>
+      </a>
+
+      <a class="card" href="floating-market.html" style="--accent:#f0b45c">
+        <span class="card-num">02</span>
+        <span class="card-glyph">市</span>
+        <span class="card-glow"></span>
+        <span class="card-tag">Canal 7</span>
+        <h3 class="card-title">The Floating Market</h3>
+        <p class="card-copy">Sampans stacked with printed silk and quantum tea drift under bridge-light, sold by the same families for six generations.</p>
+        <span class="card-go">Open the day's list →</span>
+      </a>
+
+      <a class="card" href="river-dragon.html" style="--accent:#4de8ff">
+        <span class="card-num">03</span>
+        <span class="card-glyph">龙</span>
+        <span class="card-glow"></span>
+        <span class="card-tag">Signal source</span>
+        <h3 class="card-title">The River Dragon</h3>
+        <p class="card-copy">Rebuilt in fibre and fog after the flood of ’61, it still answers only to its old, unspoken name.</p>
+        <span class="card-go">Read the broadcast log →</span>
+      </a>
+
+      <a class="card" href="sky-harbor.html" style="--accent:#9a6bff">
+        <span class="card-num">04</span>
+        <span class="card-glyph">空</span>
+        <span class="card-glow"></span>
+        <span class="card-tag">Altitude 400m</span>
+        <h3 class="card-title">Sky Harbor</h3>
+        <p class="card-copy">Freight junks folded their sails decades ago. What replaced them still bows to the wind before it leaves port.</p>
+        <span class="card-go">Check the lane board →</span>
+      </a>
+
+      <a class="card" href="temple-towers.html" style="--accent:#f0b45c">
+        <span class="card-num">05</span>
+        <span class="card-glyph">塔</span>
+        <span class="card-glow"></span>
+        <span class="card-tag">Server level −12</span>
+        <h3 class="card-title">Temple Towers</h3>
+        <p class="card-copy">Pagoda roofs stacked over server farms. Incense smoke still finds its way past the antenna arrays.</p>
+        <span class="card-go">Descend the tiers →</span>
+      </a>
+
+      <a class="card" href="ink-canals.html" style="--accent:#ff3d64">
+        <span class="card-num">06</span>
+        <span class="card-glyph">墨</span>
+        <span class="card-glow"></span>
+        <span class="card-tag">Auto-calligraphy</span>
+        <h3 class="card-title">The Ink Canals</h3>
+        <p class="card-copy">Brushes once painted these waterways by hand. Now the waterways paint themselves, in the same strokes.</p>
+        <span class="card-go">Study the strokes →</span>
+      </a>
+
+    </div>
+  </div>
+</section>
+
+<section class="atlas" id="atlas">
+  <div class="wrap">
+    <div data-reveal>
+      <span class="eyebrow">观景台 · observation plate 01</span>
+      <h2 class="sec-title">Everything visible from Deck 41</h2>
+      <p class="sec-lede">One long exposure, taken from the balcony above the Lantern Quarter. Eight things in it are worth naming — pick a marker, or step through them. Several open onto a quarter of their own.</p>
+    </div>
+
+    <div class="plate-shell" data-reveal>
+      <div class="plate">
+        <div class="plate-inner" id="plateInner">
+          <img src="China%20Futuristic%20City.png" alt="Annotated observation plate of 未来城, with markers over the lanterns, dragon hologram, sky freighter, temple towers, neon signage, the river bridge, the falls, and the balcony banner.">
+          <div class="plate-grid" aria-hidden="true"></div>
+        </div>
+      </div>
+      <div class="plate-read" id="plateRead">
+        <span class="read-index" id="readIndex">01 / 08</span>
+        <div class="read-glyph" id="readGlyph">幡</div>
+        <h3 class="read-title" id="readTitle">The Red Banner</h3>
+        <p class="read-copy" id="readCopy"></p>
+        <div class="read-meta">
+          <span>Elevation<b id="readAlt">—</b></span>
+          <span>Signal<b id="readSig">—</b></span>
+        </div>
+        <a class="read-link" id="readLink" href="#" hidden>Open →</a>
+        <div class="plate-nav" id="plateNav"></div>
+        <span class="read-hint">Select a marker · ← → to step</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="sec bordered" id="readout" style="background:linear-gradient(180deg, transparent, rgba(77,232,255,.03), transparent)">
+  <div class="wrap">
+    <div data-reveal>
+      <span class="eyebrow">城市读数 · system readout</span>
+      <h2 class="sec-title">Figures off the deck's own panel</h2>
+      <p class="sec-lede">The instruments on Deck 41 were installed in '68 and have never once been recalibrated. The city insists they are accurate.</p>
+    </div>
+    <div class="readout" data-reveal>
+      <div class="meter"><div class="meter-top"><span class="label">Population</span><span class="value">41.2M</span></div><div class="meter-track"><div class="meter-fill" data-target="88"></div></div></div>
+      <div class="meter"><div class="meter-top"><span class="label">Lanterns lit</span><span class="value">41,208</span></div><div class="meter-track"><div class="meter-fill" data-target="72"></div></div></div>
+      <div class="meter"><div class="meter-top"><span class="label">Grid load</span><span class="value">78%</span></div><div class="meter-track"><div class="meter-fill" data-target="78"></div></div></div>
+      <div class="meter"><div class="meter-top"><span class="label">Air lanes</span><span class="value">12 ACTIVE</span></div><div class="meter-track"><div class="meter-fill" data-target="52"></div></div></div>
+      <div class="meter"><div class="meter-top"><span class="label">Water reclaimed</span><span class="value">90%</span></div><div class="meter-track"><div class="meter-fill" data-target="90"></div></div></div>
+      <div class="meter"><div class="meter-top"><span class="label">Dragon uptime</span><span class="value">26 YRS</span></div><div class="meter-track"><div class="meter-fill" data-target="99"></div></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="sec bordered" id="manifesto" style="background:linear-gradient(180deg, transparent, rgba(240,180,92,.035), transparent); border-bottom:1px solid var(--line)">
+  <div class="wrap split-cols">
+    <div data-reveal>
+      <div class="mark-hanzi" style="color:var(--crimson)">新旧共生<small>Old and new, one breath</small></div>
+    </div>
+    <div data-reveal>
+      <span class="eyebrow">Manifesto</span>
+      <p class="statement">未来城 was never a city that arrived from the future. It is one that refused to leave the past behind — and dragged it, glowing, into tomorrow.</p>
+      <p class="body-copy">Somewhere between a temple bell and a server fan, its citizens found a version of the future that still remembers where the good tea is. Pagoda roofs sit on server farms. Sampans work the same canal they worked in the Ming, under bridges that now answer to air traffic control. The dragon over the skyline is a hologram, and it is still the oldest thing in the valley.</p>
+    </div>
+  </div>
+</section>
+
+<section class="enter" id="enter">
+  <div class="wrap">
+    <span class="eyebrow">未来城 · open after dark</span>
+    <h2 data-reveal>Enter 未来城</h2>
+    <p data-reveal>There is no map — only six quarters and the order you walk them in. Follow the lanterns downhill, and let the dragon take you the rest of the way.</p>
+    <a class="enter-link" href="lantern-quarter.html" data-reveal>Begin at the Lantern Quarter ↓</a>
+  </div>
+</section>
+
+<footer>
+  <div>
+    <span class="fmark">未来城 · FUTURE CITY</span><br>
+    A speculative district. Traditional culture, future-built.
+  </div>
+  <nav class="foot-links" aria-label="Quarters">
+    <a href="lantern-quarter.html">灯 Lantern Quarter</a>
+    <a href="floating-market.html">市 Floating Market</a>
+    <a href="river-dragon.html">龙 River Dragon</a>
+    <a href="sky-harbor.html">空 Sky Harbor</a>
+    <a href="temple-towers.html">塔 Temple Towers</a>
+    <a href="ink-canals.html">墨 Ink Canals</a>
+  </nav>
+  <div class="fine">
+    YR 2087 · N39.90° E116.41° · DRAGON: AWAKE<br>
+    Ambient track: “Tobu” — copyrighted, included for local playback only.
+  </div>
+</footer>
+
+<script>
+window.FC_TICKER = [
+  '<em>灯</em> LANTERN GRID NOMINAL · 41,208 LIT',
+  'WEATHER: <b>LIGHT RAIN</b> · VISIBILITY 18KM',
+  '<em>龙</em> DRAGON BROADCAST — UNINTERRUPTED SINCE 2061',
+  'AIR LANES 12 ACTIVE, 2 REROUTED OVER THE FALLS',
+  'CANAL 7 NIGHT MARKET OPEN UNTIL TIDE',
+  '<em>塔</em> TEMPLE TOWERS · SUBLEVEL COOLING STABLE',
+  'CURFEW LIFTS 05:00 · FIRST FERRY 05:20'
+];
+
+window.FC_PINS = [
+  { x:5,    y:34, glyph:'幡', hue:'#ff3d64', title:'The Red Banner',      alt:'Deck 41',        sig:'None — cloth',
+    copy:'Three characters, hand-painted, hung new every spring festival since long before the towers. 未来城: future city. The oldest sign in the valley is also the only one nobody has ever tried to light.' },
+  { x:19,   y:14, glyph:'灯', hue:'#ff3d64', title:'Balcony Lanterns',    alt:'Deck 41',        sig:'Grid loop 7',
+    href:'lantern-quarter.html', linkName:'the Lantern Quarter',
+    copy:'Silk over a lattice frame, filament inside, drawing off the same feed as the freight lanes overhead. The Quarter fought eleven years to keep them analogue in shape, if not in current.' },
+  { x:70,   y:11, glyph:'舟', hue:'#9a6bff', title:'Sky Freighter',       alt:'620 m',          sig:'Lane 12 · inbound',
+    href:'sky-harbor.html', linkName:'Sky Harbor',
+    copy:'A bulk hauler on the evening approach, running dark except for its lane lights. It still dips its nose before it clears the ridge — a bow the pilots inherited from the river junks and never explained.' },
+  { x:67.5, y:31, glyph:'龙', hue:'#4de8ff', title:'The River Dragon',    alt:'340 m',          sig:'Broadcast · permanent',
+    href:'river-dragon.html', linkName:'the River Dragon',
+    copy:'Not advertising. A civic projection coiling above the exchange district since ’61, drawn from a scan of the temple carving that survived the flood. It has never been switched off, and no department will admit to owning the switch.' },
+  { x:53,   y:35, glyph:'字', hue:'#9a6bff', title:'The Sign Spires',     alt:'180–400 m',      sig:'Commercial',
+    copy:'天宫酒店 — Sky Palace Hotel — and four hundred of its neighbours, stacked vertically because the valley floor ran out in 2044. The characters are set to be read from the river, not the street.' },
+  { x:79,   y:29, glyph:'塔', hue:'#f0b45c', title:'Temple Towers',       alt:'90 m · −12 sub', sig:'Dark fibre',
+    href:'temple-towers.html', linkName:'the Temple Towers',
+    copy:'Tiered roofs in the old order, holding a server farm in every tier below. Monks and technicians use the same stair and, by long agreement, the same tea.' },
+  { x:56,   y:67, glyph:'桥', hue:'#f0b45c', title:'Arch Bridge & Junks', alt:'River level',    sig:'Canal 7',
+    href:'floating-market.html', linkName:'the Floating Market',
+    copy:'Stone spans from the Ming, load-tested for maglev in ’72 and passed without modification. Beneath them, lantern-hung sampans still trade at their own pace, indifferent to the schedule above.' },
+  { x:14,   y:41, glyph:'瀑', hue:'#4de8ff', title:'The Terrace Falls',   alt:'900 m drop',     sig:'Hydro loop',
+    href:'ink-canals.html', linkName:'the Ink Canals',
+    copy:'Reclaimed rain, released down the cliff faces on both flanks of the valley. Ninety per cent is caught again before it reaches the river. The other ten is left to fall for the look of the thing.' }
+];
+</script>
+<script src="assets/auth.js"></script>
+<script src="assets/admin.js"></script>
+<script src="assets/site.js"></script>
+</body>
+</html>
