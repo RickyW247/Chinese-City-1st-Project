@@ -319,177 +319,336 @@
      THE DRAGON — a swirling helix down the whole page
      ============================================================ */
   var svg = $('#dragon');
-  var DW = 0, DH = 0, turns = 4, N = 220, phase = 0;
+  var DW = 0, DH = 0, turns = 4, N = 200, phase = 0;
+  var samples = [];
 
-  /* The flight. One lead dragon down the middle, and a smaller pair riding
-     wider, out of step and out of phase with it, so no screen of the page
-     ever shows a single lonely coil. Each entry is a whole dragon:
-       hue/hue2  the two colours of its gradient (CSS custom properties)
-       amp       how far it swings from its own centre line
-       turnsK    coils per page, relative to the lead
-       girth     body thickness, and with it head size and limb reach
-       off       centre line, as a fraction of the viewport off middle
-       dir       1 coils one way, -1 the other
-       lag       phase offset, so the coils never line up
-       at        where its head rides on screen, 0 top … 1 bottom
-       fade      layer opacity — the small ones sit further back
-       drift     how fast it swims when the page is still */
-  var FLIGHT = [
-    { key:'lead',  hue:'--accent',  hue2:'--accent-2', amp:1,   turnsK:1,    girth:1,   off:0,    dir:1,  lag:0,   at:.5,  fade:1,   drift:1 },
-    { key:'jade',  hue:'--jade',    hue2:'--accent',   amp:.58, turnsK:1.55, girth:.54, off:-.27, dir:-1, lag:2.1, at:.24, fade:.58, drift:1.5 },
-    { key:'ember', hue:'--crimson', hue2:'--gold',     amp:.46, turnsK:1.3,  girth:.46, off:.29,  dir:1,  lag:4.2, at:.78, fade:.5,  drift:.72 }
-  ];
+  /* One dragon, drawn as a solid helix rather than a flat ribbon.
+     Everything below exists to sell depth on a 2D layer:
+       · the coil is an ellipse, not a sine wave — each loop leans toward
+         the viewer (TILT), so the body genuinely passes in front of itself
+       · the body is cut into quads and sorted into BANDS by depth, painted
+         far band first, so near coils occlude far ones
+       · colour, alpha, thickness and detail all ride on that same depth, so
+         far coils go dark and hazy and near coils go bright and fat
+       · a rim light runs along one edge only, from a fixed light direction */
+  var BANDS = 10;
+  var TILT = 0.34;                    // how far each loop leans out of the page
+  var LX = -0.55, LY = -0.84;         // light, from the upper left
+  var GIRTH = 1;                      // body scale, from the width of the page
+  var band = [];                      // one set of paths per depth band
+  var dgHead;
 
-  function headMarkup(a, b){
+  /* ---- colour helpers: the palette is mixed from the page's own accents ---- */
+  function rgbOf(c){
+    c = (c || '').trim();
+    if(c.charAt(0) === '#'){
+      if(c.length === 4) return [parseInt(c[1]+c[1],16), parseInt(c[2]+c[2],16), parseInt(c[3]+c[3],16)];
+      return [parseInt(c.substr(1,2),16), parseInt(c.substr(3,2),16), parseInt(c.substr(5,2),16)];
+    }
+    var m = c.match(/[\d.]+/g);
+    return m ? [+m[0], +m[1], +m[2]] : [77,232,255];
+  }
+  function mix(a, b, k){ return [a[0]+(b[0]-a[0])*k, a[1]+(b[1]-a[1])*k, a[2]+(b[2]-a[2])*k]; }
+  function rgba(c, a){
+    return 'rgba(' + Math.round(c[0]) + ',' + Math.round(c[1]) + ',' + Math.round(c[2]) + ',' + a.toFixed(3) + ')';
+  }
+  function hex(c){
+    return '#' + [0,1,2].map(function(i){ return ('0' + Math.round(c[i]).toString(16)).slice(-2); }).join('');
+  }
+
+  var PAL = null;
+  function palette(){
+    var A = rgbOf(cssVar('--accent', '#4de8ff'));
+    var B = rgbOf(cssVar('--accent-2', '#9a6bff'));
+    var G = rgbOf(cssVar('--gold', '#f0b45c'));
+    var C = rgbOf(cssVar('--crimson', '#ff3d64'));
+    var VOID = rgbOf(cssVar('--void', '#05060d'));
+    var W = [255,255,255];
+    var deep = mix(B, VOID, .42), mid = mix(A, B, .5), near = mix(A, W, .34);
+    var p = { a:A, b:B, gold:G, crimson:C, dark:VOID, body:[], hi:[], sh:[], rim:[], glow:[], ring:[], plate:[], spine:[], limb:[] };
+    for(var i = 0; i < BANDS; i++){
+      var k = i / (BANDS - 1);                       // 0 far … 1 near
+      var base = k < .5 ? mix(deep, mid, k * 2) : mix(mid, near, (k - .5) * 2);
+      p.body.push(rgba(base, .48 + .46 * k));
+      p.hi.push(rgba(mix(base, W, .48), .16 + .46 * k));      // lit flank
+      p.sh.push(rgba(mix(base, VOID, .62), .30 + .40 * k));   // turning away
+      p.rim.push(rgba(mix(base, W, .55 + .25 * k), .12 + .62 * k));
+      p.glow.push(rgba(mix(base, W, .35), .04 + .13 * k));
+      p.ring.push(rgba(W, .06 + .28 * k));
+      p.plate.push(rgba(mix(base, W, .40), .08 + .34 * k));
+      p.spine.push(rgba(mix(B, A, k), .22 + .50 * k));
+      p.limb.push(rgba(mix(base, W, .3), .38 + .5 * k));
+    }
+    return p;
+  }
+
+  function headMarkup(p){
+    var a = hex(p.a), b = hex(p.b), gold = hex(p.gold), crim = hex(p.crimson);
+    var lit = hex(mix(p.a, [255,255,255], .45));
+    var dark = hex(mix(p.b, p.dark, .55));
     return (
-      // mane
-      '<path d="M-7,-8 L-17,-14 L-11,-5 L-20,-3 L-10,1 L-18,9 L-7,8 Z" fill="' + b + '" opacity=".75"/>' +
-      // skull
-      '<path d="M-7,-8 C4,-10 15,-6 20,0 C15,6 4,10 -7,8 C-10,4 -10,-4 -7,-8 Z" fill="' + a + '" opacity=".92"/>' +
-      // jaw line
-      '<path d="M6,4 C11,6 16,4 19,1" fill="none" stroke="#05060d" stroke-opacity=".55" stroke-width="1.4"/>' +
-      // horns
-      '<path d="M-3,-7 C-9,-13 -14,-17 -21,-20" fill="none" stroke="' + a + '" stroke-width="2.4" stroke-linecap="round"/>' +
-      '<path d="M1,-7 C-4,-12 -7,-16 -12,-21" fill="none" stroke="' + a + '" stroke-width="2" stroke-linecap="round" opacity=".8"/>' +
-      // whiskers
-      '<path d="M17,-2 C24,-6 29,-13 27,-21" fill="none" stroke="' + b + '" stroke-width="1.6" stroke-linecap="round" opacity=".85"/>' +
-      '<path d="M17,3 C24,4 30,9 31,17" fill="none" stroke="' + b + '" stroke-width="1.6" stroke-linecap="round" opacity=".85"/>' +
-      // eye
-      '<circle cx="6" cy="-3" r="2.2" fill="#05060d"/>' +
-      '<circle cx="6" cy="-3" r="1" fill="#ffffff"/>'
+      /* mane, three layers deep so it reads as hair rather than a fringe */
+'<g transform="scale(.82)">' +
+      '<path d="M-6,-11 L-26,-22 L-14,-8 L-32,-9 L-15,-2 L-31,6 L-14,4 L-24,18 L-6,10 Z" fill="' + dark + '" opacity=".75"/>' +
+      '<path d="M-5,-10 L-20,-18 L-11,-7 L-25,-6 L-12,-1 L-24,7 L-11,5 L-18,15 L-5,9 Z" fill="' + b + '" opacity=".8"/>' +
+      '<path d="M-4,-8 L-14,-13 L-8,-5 L-17,-3 L-8,1 L-15,8 L-4,7 Z" fill="' + lit + '" opacity=".4"/>' +
+      '</g>' +
+      /* neck plates, so the head does not start at a hard edge */
+      '<path d="M-10,-7 C-4,-9 -2,-9 1,-8 L1,8 C-2,9 -4,9 -10,7 Z" fill="' + dark + '" opacity=".75"/>' +
+      /* skull, then a lit top plane and a shadowed under plane — a cylinder, not a disc */
+      '<path d="M-6,-10 C6,-13 20,-8 27,0 C20,8 6,13 -6,10 C-10,5 -10,-5 -6,-10 Z" fill="' + a + '" opacity=".95"/>' +
+      '<path d="M-6,-10 C6,-13 20,-8 27,0 C18,-2 6,-4 -5,-4 C-7,-7 -7,-8 -6,-10 Z" fill="' + lit + '" opacity=".55"/>' +
+      '<path d="M-6,10 C6,13 20,8 27,0 C18,3 8,6 -4,6 C-6,8 -6,9 -6,10 Z" fill="' + dark + '" opacity=".6"/>' +
+      /* brow ridge and cheek plate */
+      '<path d="M-2,-6 C6,-8 13,-6 18,-2" fill="none" stroke="' + dark + '" stroke-width="1.6" opacity=".8"/>' +
+      '<path d="M-1,2 C5,3 10,3 15,2" fill="none" stroke="' + dark + '" stroke-width="1.2" opacity=".55"/>' +
+      /* jaw, open, with teeth */
+      '<path d="M9,4 C16,9 23,8 27,1 C22,7 15,7 9,4 Z" fill="' + dark + '" opacity=".9"/>' +
+      '<path d="M13,3.4 l1.4,2.6 l1.3,-2.4 Z M17.6,4.2 l1.4,2.6 l1.3,-2.5 Z M22,4 l1.2,2.2 l1.3,-2.1 Z" fill="#ffffff" opacity=".85"/>' +
+      '<path d="M11,-3 l1.4,-2.8 l1.4,2.6 Z M16,-3 l1.4,-2.8 l1.4,2.6 Z" fill="#ffffff" opacity=".55"/>' +
+      /* horns — a main pair swept back, a smaller branch on each */
+      '<path d="M-2,-8 C-10,-16 -18,-22 -30,-27" fill="none" stroke="' + a + '" stroke-width="3.4" stroke-linecap="round"/>' +
+      '<path d="M-14,-18 C-18,-22 -22,-24 -28,-25" fill="none" stroke="' + a + '" stroke-width="2" stroke-linecap="round" opacity=".8"/>' +
+      '<path d="M3,-8 C-2,-15 -7,-20 -15,-25" fill="none" stroke="' + lit + '" stroke-width="2.6" stroke-linecap="round" opacity=".85"/>' +
+      '<path d="M-6,-15 C-10,-18 -13,-19 -18,-20" fill="none" stroke="' + lit + '" stroke-width="1.5" stroke-linecap="round" opacity=".6"/>' +
+      /* whiskers, long and curling — the giveaway of a Chinese dragon */
+      '<path d="M23,-3 C34,-9 42,-19 39,-31 C38,-36 34,-38 31,-36" fill="none" stroke="' + b + '" stroke-width="2" stroke-linecap="round" opacity=".9"/>' +
+      '<path d="M23,4 C33,7 42,14 44,26 C45,31 42,34 38,33" fill="none" stroke="' + b + '" stroke-width="2" stroke-linecap="round" opacity=".9"/>' +
+      '<path d="M20,-5 C27,-11 31,-17 30,-24" fill="none" stroke="' + gold + '" stroke-width="1.2" stroke-linecap="round" opacity=".7"/>' +
+      /* nostril, eye, spark */
+      '<circle cx="23" cy="-1.5" r="1.3" fill="' + dark + '" opacity=".9"/>' +
+      '<ellipse cx="8" cy="-4" rx="4.2" ry="3.4" fill="#ffffff" opacity=".92"/>' +
+      '<ellipse cx="8.8" cy="-4" rx="1.7" ry="2.9" fill="' + crim + '"/>' +
+      '<circle cx="7" cy="-5.2" r="1" fill="#ffffff"/>' +
+      '<circle cx="30" cy="0" r="2.6" fill="' + gold + '" opacity=".55"/>'
     );
   }
 
   function dragonInit(){
     if(!svg) return;
-    var defs = '', layers = '', heads = '';
-    FLIGHT.forEach(function(d){
-      d.a = cssVar(d.hue, '#4de8ff');
-      d.b = cssVar(d.hue2, '#9a6bff');
-      d.samples = [];
-      var grad = 'url(#dgGrad-' + d.key + ')';
-      defs +=
-        '<linearGradient id="dgGrad-' + d.key + '" x1="0" y1="0" x2="0" y2="1">' +
-          '<stop offset="0" stop-color="' + d.a + '"/>' +
-          '<stop offset=".45" stop-color="' + d.b + '"/>' +
-          '<stop offset="1" stop-color="' + d.a + '"/>' +
-        '</linearGradient>' +
-        '<clipPath id="dgClip-' + d.key + '"><rect id="dgClipRect-' + d.key + '" x="-200" y="0" width="4000" height="0"/></clipPath>';
+    PAL = palette();
+    var layers = '';
+    band = [];
+    for(var i = 0; i < BANDS; i++){
+      // far bands first: this list order IS the depth sorting
       layers +=
-        '<g clip-path="url(#dgClip-' + d.key + ')" opacity="' + d.fade + '" shape-rendering="optimizeSpeed">' +
-          // soft outer halo — cheaper than a CSS filter over a full-page layer
-          '<path id="dgHalo-' + d.key + '" fill="none" stroke="' + grad + '" stroke-width="' + (16 * d.girth).toFixed(1) + '" stroke-opacity=".16" stroke-linejoin="round"/>' +
-          '<path id="dgFins-' + d.key + '" fill="' + grad + '" opacity=".42"/>' +
-          '<path id="dgBody-' + d.key + '" fill="' + grad + '" opacity=".46" stroke="' + d.a + '" stroke-opacity=".55" stroke-width="1.2"/>' +
-          '<path id="dgScales-' + d.key + '" fill="none" stroke="#ffffff" stroke-opacity=".2" stroke-width=".9"/>' +
-          '<path id="dgLegs-' + d.key + '" fill="none" stroke="' + d.a + '" stroke-width="' + (2.4 * d.girth).toFixed(1) + '" stroke-linecap="round" opacity=".5"/>' +
+        '<g id="dgB' + i + '" shape-rendering="optimizeSpeed">' +
+          '<path class="dgAo"    fill="' + rgba(PAL.dark, .9) + '"/>' +
+          '<path class="dgBody"  fill="' + PAL.body[i] + '"/>' +
+          '<path class="dgSh"    fill="' + PAL.sh[i] + '"/>' +
+          '<path class="dgHi"    fill="' + PAL.hi[i] + '"/>' +
+          '<path class="dgPlate" fill="' + PAL.plate[i] + '"/>' +
+          '<path class="dgSpine" fill="' + PAL.spine[i] + '"/>' +
+          '<path class="dgRing"  fill="none" stroke="' + PAL.ring[i] + '" stroke-width="1"/>' +
+          '<path class="dgGlow"  fill="none" stroke="' + PAL.glow[i] + '" stroke-linecap="round"/>' +
+          '<path class="dgRim"   fill="none" stroke="' + PAL.rim[i] + '" stroke-linecap="round"/>' +
+          '<path class="dgLimb"  fill="none" stroke="' + PAL.limb[i] + '" stroke-linecap="round" stroke-linejoin="round"/>' +
         '</g>';
-      heads += '<g class="dg-head" id="dgHead-' + d.key + '" opacity="' + d.fade + '" style="--dg:' + d.a + '"></g>';
-    });
-    svg.innerHTML = '<defs>' + defs + '</defs>' + layers + heads;
-    FLIGHT.forEach(function(d){
-      d.halo   = $('#dgHalo-' + d.key);
-      d.body   = $('#dgBody-' + d.key);
-      d.scales = $('#dgScales-' + d.key);
-      d.fins   = $('#dgFins-' + d.key);
-      d.legs   = $('#dgLegs-' + d.key);
-      d.head   = $('#dgHead-' + d.key);
-      d.clip   = $('#dgClipRect-' + d.key);
-      d.head.innerHTML = headMarkup(d.a, d.b);
-    });
+    }
+    svg.innerHTML =
+      '<g>' + layers + '</g>' +
+      '<g class="dg-head" id="dgHead"></g>';
+    for(var j = 0; j < BANDS; j++){
+      var g = $('#dgB' + j);
+      band.push({
+        ao:    g.querySelector('.dgAo'),
+        body:  g.querySelector('.dgBody'),
+        sh:    g.querySelector('.dgSh'),
+        hi:    g.querySelector('.dgHi'),
+        plate: g.querySelector('.dgPlate'),
+        spine: g.querySelector('.dgSpine'),
+        ring:  g.querySelector('.dgRing'),
+        rim:   g.querySelector('.dgRim'),
+        glow:  g.querySelector('.dgGlow'),
+        limb:  g.querySelector('.dgLimb')
+      });
+    }
+    dgHead = $('#dgHead');
+    dgHead.innerHTML = headMarkup(PAL);
   }
 
-  function geometry(d, ph){
-    var pts = [];
-    var cxp = DW * (0.5 + d.off);
-    var amp = Math.min(DW * 0.34, 330) * d.amp;
-    var coils = turns * d.turnsK;
+  function headFrac(){
+    return Math.max(0, Math.min(1, (scrollY + innerHeight * 0.76) / DH));
+  }
+
+  function geometry(ph){
+    samples = [];
+    var cxp = DW / 2;
+    var amp = Math.min(DW * 0.40, 560);
+    GIRTH = Math.max(0.8, Math.min(1.7, DW / 1150));
     for(var i = 0; i <= N; i++){
       var t = i / N;
-      var ang = (t * coils * Math.PI * 2 + ph * d.drift + d.lag) * d.dir;
-      var taper = Math.sin(Math.min(t * 5, 1) * Math.PI / 2) * Math.sin(Math.min((1 - t) * 7, 1) * Math.PI / 2);
-      var A = amp * (0.42 + 0.58 * taper);
+      var ang = t * turns * Math.PI * 2 + ph;
+      var taper = Math.sin(Math.min(t * 7, 1) * Math.PI / 2) * Math.sin(Math.min((1 - t) * 6, 1) * Math.PI / 2);
+      var A = amp * (0.46 + 0.54 * taper);
       var depth = Math.cos(ang);                        // +1 near, −1 far
-      var near = 0.45 + 0.55 * (depth * 0.5 + 0.5);
-      pts.push({
+      var near = 0.34 + 0.66 * (depth * 0.5 + 0.5);     // strong foreshortening
+      samples.push({
         x: cxp + Math.sin(ang) * A,
-        y: t * DH,
-        w: (2.2 + 10.5 * taper) * near * d.girth,
+        y: t * DH + depth * A * TILT,                   // the lean that makes it a helix
+        w: (12 + 40 * taper) * near * GIRTH,
+        w0: (12 + 40 * taper) * near * GIRTH,   // girth before the neck thins it
         near: near,
         depth: depth
       });
     }
-    // tangents and normals
     for(var j = 0; j <= N; j++){
-      var p0 = pts[Math.max(0, j - 1)], p1 = pts[Math.min(N, j + 1)];
+      var p0 = samples[Math.max(0, j - 1)], p1 = samples[Math.min(N, j + 1)];
       var dx = p1.x - p0.x, dy = p1.y - p0.y;
       var len = Math.hypot(dx, dy) || 1;
-      pts[j].tx = dx / len; pts[j].ty = dy / len;
-      pts[j].nx = -dy / len; pts[j].ny = dx / len;
+      samples[j].tx = dx / len; samples[j].ty = dy / len;
+      samples[j].nx = -dy / len; samples[j].ny = dx / len;
+      // which edge the light falls on, and how squarely
+      var d = samples[j].nx * LX + samples[j].ny * LY;
+      samples[j].lit = d >= 0 ? 1 : -1;
+      samples[j].facing = Math.abs(d);
     }
-    d.samples = pts;
 
-    // only build path data for the slice of the coil that is on screen —
-    // the SVG layer is one viewport tall, so the rest would never be painted
-    var top = scrollY - 500, bottom = scrollY + innerHeight + 500;
-    var kFrom = Math.max(0, Math.floor((top / DH) * N));
-    var kTo = Math.min(N, Math.ceil((bottom / DH) * N));
+    // only build the slice of the coil that is on screen — the layer is one
+    // viewport tall, so the rest would never be painted. The lean pushes a
+    // loop up to amp*TILT off its nominal y, so the margin has to cover it.
+    var margin = 500 + Math.min(DW * 0.40, 560) * TILT;
+    var kFrom = Math.max(0, Math.floor(((scrollY - margin) / DH) * N));
+    var kTo = Math.min(N - 1, Math.ceil(((scrollY + innerHeight + margin) / DH) * N));
+    // the neck: the last stretch of body before the head, thinning into it
+    var kHead = Math.min(N, Math.round(headFrac() * N));
+    kTo = Math.min(kTo, kHead);
+    var NECK = 5;
+    for(var n2 = Math.max(0, kHead - NECK); n2 <= kHead && n2 <= N; n2++){
+      var g2 = (kHead - n2) / NECK;                   // 0 at the head, 1 back along the body
+      samples[n2].w *= 0.55 + 0.45 * g2;
+    }
 
-    var left = '', right = [], scales = '', fins = '', legs = '';
+    var ao = [], body = [], hi = [], sh = [], plate = [], spine = [], ring = [], rim = [], limb = [];
+    for(var q = 0; q < BANDS; q++){ ao[q] = ''; body[q] = ''; hi[q] = ''; sh[q] = ''; plate[q] = ''; spine[q] = ''; ring[q] = ''; rim[q] = ''; limb[q] = ''; }
+
+    function edge(s, side, k){
+      return [s.x + s.nx * s.w * k * side, s.y + s.ny * s.w * k * side];
+    }
+    // a band running down one flank of the body, between two offsets from
+    // its centre line — this is what shades the tube round
+    function strip(s, e, side, k0, k1){
+      var a = edge(s, side, k0), b = edge(e, side, k0), c = edge(e, side, k1), d = edge(s, side, k1);
+      return 'M' + a[0].toFixed(1) + ' ' + a[1].toFixed(1) +
+             'L' + b[0].toFixed(1) + ' ' + b[1].toFixed(1) +
+             'L' + c[0].toFixed(1) + ' ' + c[1].toFixed(1) +
+             'L' + d[0].toFixed(1) + ' ' + d[1].toFixed(1) + 'Z ';
+    }
+    function quad(s, e, k){
+      var a = edge(s, 1, k), b = edge(e, 1, k), c = edge(e, -1, k), d = edge(s, -1, k);
+      return 'M' + a[0].toFixed(1) + ' ' + a[1].toFixed(1) +
+             'L' + b[0].toFixed(1) + ' ' + b[1].toFixed(1) +
+             'L' + c[0].toFixed(1) + ' ' + c[1].toFixed(1) +
+             'L' + d[0].toFixed(1) + ' ' + d[1].toFixed(1) + 'Z ';
+    }
+
     for(var k = kFrom; k <= kTo; k++){
-      var s = pts[k];
-      var lx = s.x + s.nx * s.w, ly = s.y + s.ny * s.w;
-      var rx = s.x - s.nx * s.w, ry = s.y - s.ny * s.w;
-      left += (k === kFrom ? 'M' : 'L') + lx.toFixed(1) + ' ' + ly.toFixed(1) + ' ';
-      right.push('L' + rx.toFixed(1) + ' ' + ry.toFixed(1) + ' ');
-      if(k % 3 === 0 && s.w > 2 * d.girth){
-        scales += 'M' + lx.toFixed(1) + ' ' + ly.toFixed(1) + 'L' + rx.toFixed(1) + ' ' + ry.toFixed(1) + ' ';
+      var s = samples[k], e = samples[k + 1];
+      if(!e) break;
+      var dep = (s.depth + e.depth) / 2;
+      var bi = Math.max(0, Math.min(BANDS - 1, Math.round((dep + 1) / 2 * (BANDS - 1))));
+
+      body[bi] += quad(s, e, 1.02);                     // slight overlap hides the seams
+      if(s.w > 2.5){
+        sh[bi] += strip(s, e, -s.lit, .35, 1.02);       // flank turning away from the light
+        hi[bi] += strip(s, e, s.lit, .05, .66);         // flank facing it
       }
-      // dorsal fin spikes on the near side of the coil
-      if(k % 3 === 0 && s.depth > -0.35 && s.w > 3 * d.girth){
-        var f = s.w * 0.85;
-        var fx = s.x + s.nx * (s.w + f), fy = s.y + s.ny * (s.w + f);
-        var ax = s.x + s.nx * s.w - s.tx * s.w * 0.9, ay = s.y + s.ny * s.w - s.ty * s.w * 0.9;
-        var bx = s.x + s.nx * s.w + s.tx * s.w * 0.9, by = s.y + s.ny * s.w + s.ty * s.w * 0.9;
-        fins += 'M' + ax.toFixed(1) + ' ' + ay.toFixed(1) +
-                'L' + fx.toFixed(1) + ' ' + fy.toFixed(1) +
-                'L' + bx.toFixed(1) + ' ' + by.toFixed(1) + 'Z ';
+      // the nearest coils carry a dark skirt, so where the body crosses itself
+      // the far coil is cut by a shadow instead of dissolving into it
+      if(bi >= BANDS - 3) ao[bi] += quad(s, e, 1.5);
+
+      // rim light down the lit edge only
+      if(s.w > 2){
+        var r0 = edge(s, s.lit, .86), r1 = edge(e, e.lit, .86);
+        rim[bi] += 'M' + r0[0].toFixed(1) + ' ' + r0[1].toFixed(1) +
+                   'L' + r1[0].toFixed(1) + ' ' + r1[1].toFixed(1) + ' ';
+      }
+      // scale rings: arcs, bowing the way the body turns away from the eye
+      if(k % 2 === 0 && s.w > 3){
+        var g0 = edge(s, 1, 1), g1 = edge(s, -1, 1);
+        ring[bi] += 'M' + g0[0].toFixed(1) + ' ' + g0[1].toFixed(1) +
+                    'A' + (s.w * 1.5).toFixed(1) + ' ' + (s.w * 1.5).toFixed(1) + ' 0 0 ' +
+                    (s.depth >= 0 ? '1' : '0') + ' ' + g1[0].toFixed(1) + ' ' + g1[1].toFixed(1) + ' ';
+      }
+      // belly scutes, on the shaded edge, only where the underside shows
+      if(k % 2 === 0 && s.w > 4 && s.depth > -0.45){
+        var u = -1;                                      // the belly stays underneath
+        var b0 = edge(s, u, .55), b1 = edge(s, u, 1.0);
+        var b2 = edge(e, u, 1.0), b3 = edge(e, u, .55);
+        plate[bi] += 'M' + b0[0].toFixed(1) + ' ' + b0[1].toFixed(1) +
+                     'L' + b1[0].toFixed(1) + ' ' + b1[1].toFixed(1) +
+                     'L' + b2[0].toFixed(1) + ' ' + b2[1].toFixed(1) +
+                     'L' + b3[0].toFixed(1) + ' ' + b3[1].toFixed(1) + 'Z ';
+      }
+      // dorsal crest along the back, taller on the near side, serrated
+      if(k % 2 === 0 && s.w > 3.4 && s.depth > -0.5){
+        var h = s.w * (k % 4 === 0 ? 1.15 : 0.7) * (0.55 + 0.45 * s.near);
+        var side = 1;                                    // the crest stays on the back
+        var tip = [s.x + s.nx * (s.w + h) * side, s.y + s.ny * (s.w + h) * side];
+        var f0 = [s.x + s.nx * s.w * side - s.tx * s.w * 0.85, s.y + s.ny * s.w * side - s.ty * s.w * 0.85];
+        var f1 = [s.x + s.nx * s.w * side + s.tx * s.w * 0.85, s.y + s.ny * s.w * side + s.ty * s.w * 0.85];
+        var bend = [tip[0] - s.tx * h * .45, tip[1] - s.ty * h * .45];   // swept back
+        spine[bi] += 'M' + f0[0].toFixed(1) + ' ' + f0[1].toFixed(1) +
+                     'Q' + (f0[0] + s.nx * h * .5 * side).toFixed(1) + ' ' + (f0[1] + s.ny * h * .5 * side).toFixed(1) + ' ' +
+                     bend[0].toFixed(1) + ' ' + bend[1].toFixed(1) +
+                     'L' + f1[0].toFixed(1) + ' ' + f1[1].toFixed(1) + 'Z ';
       }
     }
-    // limbs, spaced along the body — only the ones currently on screen
-    [0.16, 0.3, 0.44, 0.58, 0.72, 0.86].forEach(function(at){
+
+    // the tail ends in a fin rather than a stump
+    if(kFrom <= 3){
+      var s0 = samples[0], b0 = Math.max(0, Math.min(BANDS - 1, Math.round((s0.depth + 1) / 2 * (BANDS - 1))));
+      var fw = Math.max(6, s0.w * 2.4), fl = Math.max(26, s0.w * 9);
+      spine[b0] += 'M' + (s0.x + s0.nx * fw).toFixed(1) + ' ' + (s0.y + s0.ny * fw).toFixed(1) +
+                   'Q' + (s0.x - s0.tx * fl * .6 + s0.nx * fw * 1.6).toFixed(1) + ' ' + (s0.y - s0.ty * fl * .6 + s0.ny * fw * 1.6).toFixed(1) + ' ' +
+                   (s0.x - s0.tx * fl).toFixed(1) + ' ' + (s0.y - s0.ty * fl).toFixed(1) +
+                   'Q' + (s0.x - s0.tx * fl * .6 - s0.nx * fw * 1.6).toFixed(1) + ' ' + (s0.y - s0.ty * fl * .6 - s0.ny * fw * 1.6).toFixed(1) + ' ' +
+                   (s0.x - s0.nx * fw).toFixed(1) + ' ' + (s0.y - s0.ny * fw).toFixed(1) + 'Z ';
+    }
+
+    // legs, jointed and clawed, and only drawn where they would be seen
+    [0.12, 0.23, 0.34, 0.45, 0.56, 0.67, 0.78, 0.89].forEach(function(at){
       var ki = Math.round(at * N);
       if(ki < kFrom || ki > kTo) return;
-      var s = pts[ki];
-      if(!s || s.w < 4 * d.girth) return;
-      var reach = s.w * 3.4, side = s.depth >= 0 ? 1 : -1;
-      var hx = s.x + s.nx * s.w * side, hy = s.y + s.ny * s.w * side;
-      var kx = hx + (s.nx * reach * side) + s.tx * reach * 0.5;
-      var ky = hy + (s.ny * reach * side) + s.ty * reach * 0.5;
-      var tx = kx + s.tx * reach * 0.7 - s.nx * reach * 0.2 * side;
-      var ty = ky + s.ty * reach * 0.7 - s.ny * reach * 0.2 * side;
-      legs += 'M' + hx.toFixed(1) + ' ' + hy.toFixed(1) +
-              'Q' + kx.toFixed(1) + ' ' + ky.toFixed(1) + ' ' + tx.toFixed(1) + ' ' + ty.toFixed(1) + ' ';
-      // claws
-      legs += 'M' + tx.toFixed(1) + ' ' + ty.toFixed(1) + 'l' + (s.tx * 7 * d.girth).toFixed(1) + ' ' + (s.ty * 7 * d.girth).toFixed(1) + ' ';
-      legs += 'M' + tx.toFixed(1) + ' ' + ty.toFixed(1) + 'l' + (s.nx * 6 * d.girth * side).toFixed(1) + ' ' + (s.ny * 6 * d.girth * side).toFixed(1) + ' ';
+      var s = samples[ki];
+      if(!s || s.w < 5) return;
+      var bi2 = Math.max(0, Math.min(BANDS - 1, Math.round((s.depth + 1) / 2 * (BANDS - 1))));
+      var reach = s.w * 2.6, side = s.depth >= 0 ? 1 : -1;
+      var sx = s.x + s.nx * s.w * .9 * side, sy = s.y + s.ny * s.w * .9 * side;
+      var ex = sx + s.nx * reach * side + s.tx * reach * .55;      // elbow
+      var ey = sy + s.ny * reach * side + s.ty * reach * .55;
+      var wx = ex + s.tx * reach * .95 - s.nx * reach * .25 * side; // wrist
+      var wy = ey + s.ty * reach * .95 - s.ny * reach * .25 * side;
+      limb[bi2] += 'M' + sx.toFixed(1) + ' ' + sy.toFixed(1) +
+                   'Q' + ex.toFixed(1) + ' ' + ey.toFixed(1) + ' ' + wx.toFixed(1) + ' ' + wy.toFixed(1) + ' ';
+      var claw = s.w * .95;
+      [-0.55, 0, 0.55].forEach(function(sp){
+        var cx2 = wx + (s.tx * Math.cos(sp) - s.ty * Math.sin(sp)) * claw;
+        var cy2 = wy + (s.ty * Math.cos(sp) + s.tx * Math.sin(sp)) * claw;
+        limb[bi2] += 'M' + wx.toFixed(1) + ' ' + wy.toFixed(1) + 'L' + cx2.toFixed(1) + ' ' + cy2.toFixed(1) + ' ';
+      });
+      // shoulder joint, so the leg grows out of the body instead of touching it
+      limb[bi2] += 'M' + (sx - s.tx * s.w * .5).toFixed(1) + ' ' + (sy - s.ty * s.w * .5).toFixed(1) +
+                   'A' + (s.w * .5).toFixed(1) + ' ' + (s.w * .5).toFixed(1) + ' 0 0 1 ' +
+                   (sx + s.tx * s.w * .5).toFixed(1) + ' ' + (sy + s.ty * s.w * .5).toFixed(1) + ' ';
     });
 
-    right.reverse();
-    var bodyD = left + right.join("") + "Z";
-    d.body.setAttribute("d", bodyD);
-    d.halo.setAttribute("d", bodyD);
-    d.scales.setAttribute('d', scales);
-    d.fins.setAttribute('d', fins);
-    d.legs.setAttribute('d', legs);
-  }
-
-  /* one pass over the whole flight */
-  function flight(ph){
-    for(var i = 0; i < FLIGHT.length; i++){ geometry(FLIGHT[i], ph); positionHead(FLIGHT[i]); }
-  }
-  function flightHeads(){
-    for(var i = 0; i < FLIGHT.length; i++){ positionHead(FLIGHT[i]); }
+    for(var m = 0; m < BANDS; m++){
+      var t2 = band[m];
+      t2.ao.setAttribute('d', ao[m]);
+      t2.body.setAttribute('d', body[m]);
+      t2.sh.setAttribute('d', sh[m]);
+      t2.hi.setAttribute('d', hi[m]);
+      t2.plate.setAttribute('d', plate[m]);
+      t2.spine.setAttribute('d', spine[m]);
+      t2.ring.setAttribute('d', ring[m]);
+      t2.rim.setAttribute('d', rim[m]);
+      t2.glow.setAttribute('d', rim[m]);
+      t2.glow.setAttribute('stroke-width', (6 + 16 * (m / (BANDS - 1))).toFixed(1));
+      t2.rim.setAttribute('stroke-width', (1.2 + 2.6 * (m / (BANDS - 1))).toFixed(1));
+      t2.limb.setAttribute('d', limb[m]);
+      t2.limb.setAttribute('stroke-width', ((2.2 + 4.4 * (m / (BANDS - 1))) * GIRTH).toFixed(1));
+    }
   }
 
   function buildDragon(){
@@ -499,11 +658,14 @@
     // layout can still be zero on the first frame; try again rather than
     // baking a 0×0 viewBox that nothing would ever correct
     if(DW < 2 || DH < 2){ requestAnimationFrame(buildDragon); return; }
-    if(!FLIGHT[0].body) dragonInit();
-    turns = Math.max(3, Math.min(11, DH / 680));
+    if(!band.length) dragonInit();
+    // fewer, far wider coils than a thin ribbon would take — one animal
+    // filling the page rather than a spring wound down it
+    turns = Math.max(3, Math.min(12, DH / 640));
     N = Math.max(150, Math.min(260, Math.round(DH / 22)));
     panViewBox();
-    flight(phase);
+    geometry(phase);
+    positionHead();
   }
 
   /* the layer stays one screen tall; the viewBox slides down with the scroll */
@@ -511,26 +673,24 @@
     svg.setAttribute('viewBox', '0 ' + Math.round(scrollY) + ' ' + DW + ' ' + innerHeight);
   }
 
-  /* each head flies at its own height on screen, its body trailing up behind it */
-  function positionHead(d){
-    if(!svg || !d.samples.length) return;
-    var headY = scrollY + innerHeight * d.at;
-    var f = Math.max(0, Math.min(1, headY / DH));
-    var s = d.samples[Math.min(N, Math.round(f * N))];
+  /* the head flies at mid-screen, the body trails up the page behind it */
+  function positionHead(){
+    if(!svg || !samples.length) return;
+    var s = samples[Math.min(N, Math.round(headFrac() * N))];
     var ang = Math.atan2(s.ty, s.tx) * 180 / Math.PI;
-    var scale = (0.6 + 1.1 * s.near * (0.4 + 0.6 * (s.w / 13))) * (0.45 + 0.55 * d.girth);
-    d.head.setAttribute('transform',
+    var scale = Math.max(1.2, Math.min(3.4, (s.w0 || s.w) / 12));
+    dgHead.setAttribute('transform',
       'translate(' + s.x.toFixed(1) + ',' + s.y.toFixed(1) + ') rotate(' + ang.toFixed(1) + ') scale(' + scale.toFixed(2) + ')');
-    d.clip.setAttribute('height', Math.max(0, s.y).toFixed(1));
   }
 
-  /* slow flight: the coils keep drifting even when the page is still */
+  /* slow flight: the coil keeps drifting even when the page is still */
   var driftLast = 0;
   function driftLoop(now){
     if(now - driftLast > 62){
       driftLast = now;
-      phase += 0.016;
-      flight(phase);
+      phase += 0.013;
+      geometry(phase);
+      positionHead();
     }
     requestAnimationFrame(driftLoop);
   }
@@ -543,8 +703,8 @@
     lastFrac = max > 0 ? Math.min(1, Math.max(0, scrollY / max)) : 0;
     if(svg){
       panViewBox();
-      if(reduceMotion || coarse){ flight(phase); }   // no drift loop running
-      else { flightHeads(); }
+      if(reduceMotion || coarse){ geometry(phase); }   // no drift loop running
+      positionHead();
     }
     if(!reduceMotion){
       if(heroMedia && scrollY < innerHeight * 1.3){
