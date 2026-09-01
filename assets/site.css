@@ -93,6 +93,16 @@ img{ max-width:100%; display:block; }
   pointer-events:none; mix-blend-mode:screen;
 }
 
+/* the lightning, carried over the top of everything rather than behind it */
+.storm-flash{
+  position:fixed; inset:0; z-index:5; pointer-events:none; opacity:0;
+  background:
+    radial-gradient(120% 70% at 50% -10%, rgba(214,232,255,.95), rgba(150,190,255,.35) 45%, transparent 75%),
+    linear-gradient(180deg, rgba(190,215,255,.5), transparent 60%);
+  mix-blend-mode:screen; will-change:opacity;
+}
+@media (prefers-reduced-motion: reduce){ .storm-flash{ display:none; } }
+
 /* Viewport-sized, not page-sized: the SVG's viewBox is panned to follow the
    scroll, so the compositor only ever blends one screen of pixels. A full-page
    blended layer here would stall painting on long pages. */

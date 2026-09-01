@@ -961,7 +961,7 @@
   if(amb && !reduceMotion){
     var ac = amb.getContext('2d');
     var aW = 0, aH = 0, aDPR = Math.min(1.75, window.devicePixelRatio || 1);
-    var dust = [], airDrops = [], glass = [], solids = [], sparks = [];
+    var dust = [], airDrops = [], glass = [], solids = [], sparks = [], foreDrops = [];
 
     /* --- wireframe polyhedra, rotated properly in three axes --- */
     var SHAPES = {
@@ -1028,6 +1028,57 @@
       }
     }
     var wind = 0.25, windTarget = 0.25, windTimer = 0;
+
+    /* The storm. Most strikes are somewhere behind the ridge — a sheet of
+       light with no shape to it. Some are close enough to draw. */
+    var storm = { wait: 2600, t: 0, flashes: [], bolt: null };
+    var flashEl = null;
+    function makeBolt(){
+      var x = rand(aW * 0.1, aW * 0.9), y = -30;
+      var main = [[x, y]];
+      var segs = 9 + (Math.random() * 7 | 0);
+      var reach = aH * rand(0.5, 1.0);
+      for(var i = 1; i <= segs; i++){
+        x += rand(-aW * 0.055, aW * 0.055);
+        y += reach / segs;
+        main.push([x, y]);
+      }
+      var branches = [];
+      var nb = 1 + (Math.random() * 3 | 0);
+      for(var b = 0; b < nb; b++){
+        var from = main[3 + ((Math.random() * (main.length - 5)) | 0)];
+        var bx = from[0], by = from[1], pts = [[bx, by]];
+        var steps = 3 + (Math.random() * 3 | 0);
+        for(var j = 0; j < steps; j++){
+          bx += rand(-70, 70); by += rand(26, 74);
+          pts.push([bx, by]);
+        }
+        branches.push(pts);
+      }
+      return { main: main, branches: branches };
+    }
+    function strike(){
+      var close = Math.random() < 0.42;
+      storm.bolt = close ? makeBolt() : null;
+      storm.flashes = [];
+      var n = 2 + (Math.random() * 3 | 0), at = 0;
+      for(var i = 0; i < n; i++){
+        at += rand(45, 200);
+        storm.flashes.push({
+          at: at,
+          dur: rand(110, 340),
+          peak: (close ? rand(0.24, 0.42) : rand(0.07, 0.17)) * (i ? rand(0.35, 0.85) : 1)
+        });
+      }
+      storm.t = 0;
+      storm.wait = rand(6500, 22000);
+    }
+    function strokeBolt(pts, w, col){
+      ac.strokeStyle = col; ac.lineWidth = w; ac.lineCap = 'round'; ac.lineJoin = 'round';
+      ac.beginPath(); ac.moveTo(pts[0][0], pts[0][1]);
+      for(var i = 1; i < pts.length; i++){ ac.lineTo(pts[i][0], pts[i][1]); }
+      ac.stroke();
+    }
     var lastY = window.scrollY, aPrev = 0;
     var density = coarse ? 0.5 : 1;
 
@@ -1070,6 +1121,16 @@
         col: SPARK_COL[(Math.random() * 3) | 0]
       };
     }
+    function makeForeDrop(seeded){
+      return {
+        x: rand(-60, aW + 60),
+        y: seeded ? rand(-aH, aH) : rand(-aH * 0.7, -60),
+        len: rand(90, 230),
+        w: rand(3.5, 8),
+        sp: rand(26, 46),
+        a: rand(0.05, 0.13)
+      };
+    }
     function makeDrop(seeded){
       var z = rand(0.25, 1);
       return {
@@ -1099,8 +1160,13 @@
       var dn = Math.round(Math.min(160, (aW * aH) / 8600) * density);
       for(var i = 0; i < dn; i++){ dust.push(makeDust(true)); }
       airDrops = [];
-      var rn = Math.round(Math.min(80, aW / 16) * density);
+      var rn = Math.round(Math.min(155, aW / 8.5) * density);
       for(var j = 0; j < rn; j++){ airDrops.push(makeDrop(true)); }
+      // the nearest water of all: streaks falling between you and the city,
+      // too close to focus on
+      foreDrops = [];
+      var fn = Math.round(Math.min(9, aW / 190) * density);
+      for(var q2 = 0; q2 < fn; q2++){ foreDrops.push(makeForeDrop(true)); }
       glass = [];
       sparkPalette();
       sparks = [];
@@ -1215,6 +1281,59 @@
         }
       }
 
+      /* --- the near water, out of focus, falling past your face --- */
+      for(i = 0; i < foreDrops.length; i++){
+        p = foreDrops[i];
+        p.y += p.sp;
+        p.x += wind * 2.2;
+        if(p.y - p.len > aH){ foreDrops[i] = makeForeDrop(false); continue; }
+        if(p.x > aW + 70) p.x = -70; else if(p.x < -70) p.x = aW + 70;
+        var fgr = ac.createLinearGradient(p.x, p.y - p.len, p.x + wind * 6, p.y);
+        fgr.addColorStop(0, 'rgba(200,225,255,0)');
+        fgr.addColorStop(0.75, 'rgba(205,228,255,' + (p.a * 0.8).toFixed(3) + ')');
+        fgr.addColorStop(1, 'rgba(228,242,255,' + p.a.toFixed(3) + ')');
+        ac.strokeStyle = fgr; ac.lineWidth = p.w; ac.lineCap = 'round';
+        ac.beginPath();
+        ac.moveTo(p.x, p.y - p.len);
+        ac.lineTo(p.x + wind * 6, p.y);
+        ac.stroke();
+      }
+
+      /* --- lightning: a sheet behind the ridge, or a bolt over the valley --- */
+      var flash = 0;
+      if(storm.flashes.length){
+        storm.t += dt;
+        for(i = 0; i < storm.flashes.length; i++){
+          var fl = storm.flashes[i];
+          var u = (storm.t - fl.at) / fl.dur;
+          if(u > 0 && u < 1){
+            var lit = fl.peak * Math.pow(1 - u, 2.4);
+            if(lit > flash) flash = lit;
+          }
+        }
+        if(flash > 0.002){
+          ac.fillStyle = 'rgba(178,208,255,' + flash.toFixed(3) + ')';
+          ac.fillRect(0, 0, aW, aH);
+          if(storm.bolt && storm.t < 460){
+            var ba = Math.max(flash * 2.6, 0.12);
+            strokeBolt(storm.bolt.main, 9, 'rgba(150,190,255,' + (ba * 0.22).toFixed(3) + ')');
+            strokeBolt(storm.bolt.main, 3.4, 'rgba(214,232,255,' + (ba * 0.7).toFixed(3) + ')');
+            strokeBolt(storm.bolt.main, 1.3, 'rgba(255,255,255,' + Math.min(1, ba).toFixed(3) + ')');
+            for(i = 0; i < storm.bolt.branches.length; i++){
+              strokeBolt(storm.bolt.branches[i], 2.2, 'rgba(200,224,255,' + (ba * 0.45).toFixed(3) + ')');
+              strokeBolt(storm.bolt.branches[i], 0.9, 'rgba(255,255,255,' + (ba * 0.8).toFixed(3) + ')');
+            }
+          }
+        }
+        var last = storm.flashes[storm.flashes.length - 1];
+        if(storm.t > last.at + last.dur + 240){ storm.flashes = []; storm.bolt = null; }
+      } else {
+        storm.wait -= dt;
+        if(storm.wait <= 0){ strike(); }
+      }
+      // the same light, but over the top of the city rather than behind it
+      if(flashEl){ flashEl.style.opacity = (flash * 0.55).toFixed(3); }
+
       /* --- droplets caught on the glass: they cling, then run down --- */
       if(glass.length < (coarse ? 5 : 11) && Math.random() < 0.02){ glass.push(makeGlass()); }
       for(i = glass.length - 1; i >= 0; i--){
@@ -1266,6 +1385,11 @@
       clearTimeout(ambResize);
       ambResize = setTimeout(ambSize, 200);
     });
+    flashEl = document.createElement('div');
+    flashEl.className = 'storm-flash';
+    flashEl.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(flashEl);
+
     ambSize();
     // keep retrying while layout reports nothing, so the field always seeds
     if(aW < 2){ (function retry(){ if(aW < 2){ ambSize(); requestAnimationFrame(retry); } })(); }
