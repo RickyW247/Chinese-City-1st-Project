@@ -335,6 +335,7 @@
   var TILT = 0.34;                    // how far each loop leans out of the page
   var LX = -0.55, LY = -0.84;         // light, from the upper left
   var GIRTH = 1;                      // body scale, from the width of the page
+  var headBand = -1;                  // which depth band the head is painted in
   var band = [];                      // one set of paths per depth band
   var dgHead;
 
@@ -451,6 +452,7 @@
     for(var j = 0; j < BANDS; j++){
       var g = $('#dgB' + j);
       band.push({
+        group: g,
         ao:    g.querySelector('.dgAo'),
         body:  g.querySelector('.dgBody'),
         sh:    g.querySelector('.dgSh'),
@@ -464,6 +466,7 @@
       });
     }
     dgHead = $('#dgHead');
+    headBand = -1;
     dgHead.innerHTML = headMarkup(PAL);
   }
 
@@ -676,23 +679,51 @@
   /* the head flies at mid-screen, the body trails up the page behind it */
   function positionHead(){
     if(!svg || !samples.length) return;
-    var s = samples[Math.min(N, Math.round(headFrac() * N))];
-    var ang = Math.atan2(s.ty, s.tx) * 180 / Math.PI;
-    var scale = Math.max(1.2, Math.min(3.4, (s.w0 || s.w) / 12));
+    // sample the coil continuously — rounding to the nearest sample made the
+    // head hop a step at a time as the page scrolled
+    var fi = Math.max(0, Math.min(N, headFrac() * N));
+    var i0 = Math.min(N - 1, Math.floor(fi)), u = fi - i0;
+    var s0 = samples[i0], s1 = samples[i0 + 1] || s0;
+    var lerp = function(a, b){ return a + (b - a) * u; };
+    var x = lerp(s0.x, s1.x), y = lerp(s0.y, s1.y);
+    var tx = lerp(s0.tx, s1.tx), ty = lerp(s0.ty, s1.ty);
+    var depth = lerp(s0.depth, s1.depth);
+    var girth = lerp(s0.w0 || s0.w, s1.w0 || s1.w);
+    var ang = Math.atan2(ty, tx) * 180 / Math.PI;
+    var scale = Math.max(1.2, Math.min(3.4, girth / 12));
     dgHead.setAttribute('transform',
-      'translate(' + s.x.toFixed(1) + ',' + s.y.toFixed(1) + ') rotate(' + ang.toFixed(1) + ') scale(' + scale.toFixed(2) + ')');
+      'translate(' + x.toFixed(1) + ',' + y.toFixed(1) + ') rotate(' + ang.toFixed(1) + ') scale(' + scale.toFixed(2) + ')');
+
+    // paint it inside its own depth band, so the coils in front of it hide it
+    var near = (depth + 1) / 2;
+    var bi = Math.max(0, Math.min(BANDS - 1, Math.round(near * (BANDS - 1))));
+    if(bi !== headBand){ headBand = bi; band[bi].group.appendChild(dgHead); }
+    // and let it sink into the haze as it goes round the back
+    dgHead.setAttribute('opacity', (0.12 + 0.88 * near * near).toFixed(3));
   }
 
   /* slow flight: the coil keeps drifting even when the page is still */
   var driftLast = 0;
   function driftLoop(now){
-    if(now - driftLast > 62){
+    if(!driftLast){ driftLast = now; }
+    var dt = now - driftLast;
+    if(dt >= 26){
       driftLast = now;
-      phase += 0.013;
+      phase += 0.00021 * Math.min(90, dt);        // time-based, not per-tick
       geometry(phase);
       positionHead();
     }
     requestAnimationFrame(driftLoop);
+  }
+
+  /* scrolling changes which slice of the coil is on screen, so rebuild —
+     once per frame at most, however many scroll events arrive */
+  var scrollPending = false;
+  function scrollRebuild(){
+    scrollPending = false;
+    panViewBox();
+    geometry(phase);
+    positionHead();
   }
 
   /* ---------- scroll ---------- */
@@ -703,8 +734,7 @@
     lastFrac = max > 0 ? Math.min(1, Math.max(0, scrollY / max)) : 0;
     if(svg){
       panViewBox();
-      if(reduceMotion || coarse){ geometry(phase); }   // no drift loop running
-      positionHead();
+      if(!scrollPending){ scrollPending = true; requestAnimationFrame(scrollRebuild); }
     }
     if(!reduceMotion){
       if(heroMedia && scrollY < innerHeight * 1.3){
@@ -750,7 +780,8 @@
     drops = [];
     var count = Math.round(W/9);
     for(var i=0;i<count;i++){
-      drops.push({ x:Math.random()*W, y:Math.random()*H, len:8+Math.random()*16, v:5+Math.random()*7, o:.07+Math.random()*.18 });
+      drops.push({ x:Math.random()*W, y:Math.random()*H, len:16+Math.random()*30, v:6+Math.random()*8,
+                   o:.10+Math.random()*.26, w:1+Math.random()*1.6 });
     }
     motes = [];
     for(var j=0;j<24;j++){
@@ -759,14 +790,18 @@
   }
   function drawRain(t){
     ctx.clearRect(0,0,W,H);
-    ctx.lineWidth = 1;
+    ctx.lineCap = 'round';
     for(var i=0;i<drops.length;i++){
       var d = drops[i];
       d.y += d.v; d.x -= d.v*0.18;
       if(d.y > H){ d.y = -d.len; d.x = Math.random()*W; }
       if(d.x < -20){ d.x = W + 20; }
-      ctx.strokeStyle = 'rgba(196,214,245,' + d.o + ')';
+      // a streak that thins upward, with a bright bead at the leading end
+      ctx.lineWidth = d.w;
+      ctx.strokeStyle = 'rgba(196,214,245,' + d.o.toFixed(3) + ')';
       ctx.beginPath(); ctx.moveTo(d.x, d.y); ctx.lineTo(d.x - d.len*0.18, d.y + d.len); ctx.stroke();
+      ctx.fillStyle = 'rgba(228,240,255,' + (d.o * 1.5).toFixed(3) + ')';
+      ctx.beginPath(); ctx.arc(d.x - d.len*0.18, d.y + d.len, d.w * 0.85, 0, Math.PI*2); ctx.fill();
     }
     for(var j=0;j<motes.length;j++){
       var m = motes[j];
@@ -871,7 +906,7 @@
   if(amb && !reduceMotion){
     var ac = amb.getContext('2d');
     var aW = 0, aH = 0, aDPR = Math.min(1.75, window.devicePixelRatio || 1);
-    var dust = [], drops = [], glass = [], solids = [];
+    var dust = [], airDrops = [], glass = [], solids = [], sparks = [];
 
     /* --- wireframe polyhedra, rotated properly in three axes --- */
     var SHAPES = {
@@ -955,14 +990,39 @@
         warm: Math.random() > 0.55
       };
     }
+    /* glow dust: it hangs in the air, twinkling, until the page moves —
+       then it lifts against the scroll and burns brighter for a moment */
+    var SPARK_COL = [], energy = 0;
+    function sparkPalette(){
+      var a = rgbOf(cssVar('--accent', '#4de8ff'));
+      var g = rgbOf(cssVar('--gold', '#f0b45c'));
+      SPARK_COL = [
+        a[0] + ',' + a[1] + ',' + a[2],
+        g[0] + ',' + g[1] + ',' + g[2],
+        '226,240,255'
+      ];
+    }
+    function makeSpark(seeded){
+      var z = rand(0.22, 1);
+      return {
+        x: rand(-30, aW + 30),
+        y: seeded ? rand(0, aH) : rand(aH + 20, aH + 200),
+        z: z,
+        r: rand(0.7, 2.6),
+        ph: rand(0, Math.PI * 2),
+        tw: rand(0.0016, 0.0055),
+        drift: rand(0.04, 0.22),
+        col: SPARK_COL[(Math.random() * 3) | 0]
+      };
+    }
     function makeDrop(seeded){
       var z = rand(0.25, 1);
       return {
         x: rand(-30, aW + 30),
         y: seeded ? rand(0, aH) : rand(-140, -10),
         z: z,
-        len: rand(9, 26),
-        sp: rand(5.5, 9)
+        len: rand(18, 46),
+        sp: rand(6, 10)
       };
     }
     function makeGlass(){
@@ -983,10 +1043,14 @@
       dust = [];
       var dn = Math.round(Math.min(160, (aW * aH) / 8600) * density);
       for(var i = 0; i < dn; i++){ dust.push(makeDust(true)); }
-      drops = [];
+      airDrops = [];
       var rn = Math.round(Math.min(80, aW / 16) * density);
-      for(var j = 0; j < rn; j++){ drops.push(makeDrop(true)); }
+      for(var j = 0; j < rn; j++){ airDrops.push(makeDrop(true)); }
       glass = [];
+      sparkPalette();
+      sparks = [];
+      var kn = Math.round(Math.min(110, (aW * aH) / 11000) * density);
+      for(var q = 0; q < kn; q++){ sparks.push(makeSpark(true)); }
       solids = [];
       var sn = coarse ? 3 : 7;
       for(var s = 0; s < sn; s++){ solids.push(makeSolid(true)); }
@@ -1028,8 +1092,8 @@
       }
 
       /* --- water in the air: near streaks fall faster and read softer --- */
-      for(i = 0; i < drops.length; i++){
-        p = drops[i];
+      for(i = 0; i < airDrops.length; i++){
+        p = airDrops[i];
         k = 1 / p.z;
         p.y += p.sp * k * 0.55;
         p.x += wind * k * 0.35;
@@ -1037,12 +1101,16 @@
         if(p.x > aW + 40) p.x = -40; else if(p.x < -40) p.x = aW + 40;
 
         var L = p.len * k * 0.7, slant = wind * k * 1.4;
-        ac.strokeStyle = 'rgba(190,220,255,' + (0.05 + 0.16 * (1 - p.z)).toFixed(3) + ')';
-        ac.lineWidth = Math.max(0.6, 1.5 * k * 0.55);
+        var da = 0.08 + 0.22 * (1 - p.z);
+        ac.strokeStyle = 'rgba(190,220,255,' + da.toFixed(3) + ')';
+        ac.lineWidth = Math.max(1, 3.2 * k * 0.55);
+        ac.lineCap = 'round';
         ac.beginPath();
         ac.moveTo(p.x, p.y);
         ac.lineTo(p.x + slant, p.y + L);
         ac.stroke();
+        ac.fillStyle = 'rgba(225,240,255,' + (da * 1.35).toFixed(3) + ')';
+        ac.beginPath(); ac.arc(p.x + slant, p.y + L, Math.max(1, 1.9 * k * 0.55), 0, Math.PI * 2); ac.fill();
       }
 
       /* --- floating solids: drifting, tumbling, parallaxed by depth --- */
@@ -1056,6 +1124,40 @@
         if(p.y > aH + 260){ p.y = -140; }
         if(p.x < -120) p.x = aW + 110; else if(p.x > aW + 120) p.x = -110;
         drawSolid(p);
+      }
+
+      /* --- glow dust, lifted and lit by the scroll --- */
+      var kick = Math.min(1, Math.abs(dy) / 55);
+      energy += (kick - energy) * (kick > energy ? 0.35 : 0.045);   // snaps up, settles slowly
+      for(i = 0; i < sparks.length; i++){
+        p = sparks[i];
+        k = 1 / p.z;
+        p.x += Math.sin(t * 0.0004 + p.ph) * 0.3 * k + wind * k * 0.22;
+        p.y += p.drift * k * 0.35 - shift * (k - 0.55) * 0.17;
+        if(p.x > aW + 40) p.x = -40; else if(p.x < -40) p.x = aW + 40;
+        if(p.y > aH + 60){ p.y = -40; p.x = rand(-30, aW + 30); }
+        else if(p.y < -60){ p.y = aH + 40; p.x = rand(-30, aW + 30); }
+
+        var tw = 0.5 + 0.5 * Math.sin(t * p.tw + p.ph);
+        a = Math.min(0.34, (0.05 + 0.22 * (1 - p.z)) * (0.35 + 0.65 * tw) * (0.5 + 1.1 * energy));
+        if(a < 0.012) continue;
+        var sr = p.r * (0.6 + 0.55 * k);            // near ones bigger, but not blobs
+        var sg = ac.createRadialGradient(p.x, p.y, 0, p.x, p.y, sr * 3.6);
+        sg.addColorStop(0, 'rgba(255,255,255,' + a.toFixed(3) + ')');
+        sg.addColorStop(0.35, 'rgba(' + p.col + ',' + (a * 0.75).toFixed(3) + ')');
+        sg.addColorStop(1, 'rgba(' + p.col + ',0)');
+        ac.fillStyle = sg;
+        ac.beginPath(); ac.arc(p.x, p.y, sr * 3.6, 0, Math.PI * 2); ac.fill();
+        // the brightest ones throw a small star flare
+        if(a > 0.14){
+          var fl = sr * (3.4 + 3 * energy);
+          ac.strokeStyle = 'rgba(' + p.col + ',' + (a * 0.5).toFixed(3) + ')';
+          ac.lineWidth = Math.max(0.6, sr * 0.35);
+          ac.beginPath();
+          ac.moveTo(p.x - fl, p.y); ac.lineTo(p.x + fl, p.y);
+          ac.moveTo(p.x, p.y - fl); ac.lineTo(p.x, p.y + fl);
+          ac.stroke();
+        }
       }
 
       /* --- droplets caught on the glass: they cling, then run down --- */
