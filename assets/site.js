@@ -1032,6 +1032,7 @@
     /* The storm. Most strikes are somewhere behind the ridge — a sheet of
        light with no shape to it. Some are close enough to draw. */
     var storm = { wait: 2600, t: 0, flashes: [], bolt: null };
+    var lastFlash = 0;
     var flashEl = null;
     function makeBolt(){
       var x = rand(aW * 0.1, aW * 0.9), y = -30;
@@ -1131,6 +1132,124 @@
         a: rand(0.05, 0.13)
       };
     }
+    /* The moon sits furthest back of anything here. It is drawn once into
+       its own little canvas — disc, seas, craters, phase — because the seas
+       have to be punched OUT of the light rather than painted on top of it:
+       the whole ambient layer is additive, so there is no such thing as a
+       dark brushstroke. Every frame that sprite is stamped down, with the
+       night's cloud dragged across it the same way. */
+    var moon = { base:null, cvs:null, ctx:null, r:0, size:0, clouds:[], seed:Math.random() * 1000 };
+    function punch(g, x, y, r, a){
+      var pg = g.createRadialGradient(x, y, 0, x, y, r);
+      pg.addColorStop(0, 'rgba(0,0,0,' + a + ')');
+      pg.addColorStop(0.62, 'rgba(0,0,0,' + (a * 0.72) + ')');
+      pg.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = pg;
+      g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+    }
+    function buildMoon(){
+      var r = Math.max(38, Math.min(104, Math.min(aW, aH) * 0.082));
+      var size = Math.ceil(r * 2.6);
+      var c = document.createElement('canvas');
+      c.width = c.height = size;
+      var g = c.getContext('2d');
+      var cx = size / 2, cy = size / 2;
+
+      // the lit face — brightest toward the upper left, falling away round the limb
+      var disc = g.createRadialGradient(cx - r * 0.34, cy - r * 0.36, r * 0.12, cx, cy, r);
+      disc.addColorStop(0, 'rgba(255,253,246,0.97)');
+      disc.addColorStop(0.5, 'rgba(228,235,250,0.88)');
+      disc.addColorStop(0.86, 'rgba(176,192,226,0.72)');
+      disc.addColorStop(1, 'rgba(138,158,200,0.5)');
+      g.fillStyle = disc;
+      g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.fill();
+
+      // seas and craters, taken out of the light
+      g.globalCompositeOperation = 'destination-out';
+      var seas = [[-.30,-.20,.31,.20],[.18,-.33,.22,.17],[.28,.20,.27,.15],
+                  [-.24,.32,.19,.13],[.02,.05,.16,.10],[-.05,-.42,.14,.11]];
+      for(var i = 0; i < seas.length; i++){
+        punch(g, cx + seas[i][0] * r, cy + seas[i][1] * r, seas[i][2] * r, seas[i][3]);
+      }
+      for(var j = 0; j < 14; j++){
+        var ang = (j * 2.399 + moon.seed) % (Math.PI * 2);
+        var rad = Math.sqrt(((j * 0.137 + moon.seed) % 1)) * r * 0.88;
+        punch(g, cx + Math.cos(ang) * rad, cy + Math.sin(ang) * rad,
+              r * (0.03 + ((j * 0.211 + moon.seed) % 1) * 0.06), 0.16);
+      }
+      // the terminator: a gibbous bite out of the lower right
+      var ph = g.createRadialGradient(cx + r * 0.92, cy + r * 0.5, r * 0.15,
+                                      cx + r * 0.92, cy + r * 0.5, r * 1.25);
+      ph.addColorStop(0, 'rgba(0,0,0,0.92)');
+      ph.addColorStop(0.55, 'rgba(0,0,0,0.55)');
+      ph.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = ph;
+      g.beginPath(); g.arc(cx + r * 0.92, cy + r * 0.5, r * 1.25, 0, Math.PI * 2); g.fill();
+      g.globalCompositeOperation = 'source-over';
+
+      // a cold rim on the lit edge, so the sphere has an edge to it
+      g.strokeStyle = 'rgba(226,240,255,0.5)'; g.lineWidth = Math.max(1, r * 0.03);
+      g.beginPath(); g.arc(cx, cy, r * 0.985, Math.PI * 0.72, Math.PI * 1.72); g.stroke();
+
+      moon.base = c; moon.r = r; moon.size = size;
+      moon.cvs = document.createElement('canvas');
+      moon.cvs.width = moon.cvs.height = size;
+      moon.ctx = moon.cvs.getContext('2d');
+
+      // the cloud that keeps crossing it
+      moon.clouds = [];
+      for(var q = 0; q < 5; q++){
+        moon.clouds.push({
+          x: rand(-size * 0.6, size * 1.6),
+          y: rand(size * 0.18, size * 0.82),
+          r: rand(size * 0.22, size * 0.55),
+          sp: rand(0.05, 0.22),
+          a: rand(0.35, 0.85)
+        });
+      }
+    }
+
+    function drawMoon(t, dt, flash){
+      if(!moon.base) return;
+      var mx = aW * 0.78 + Math.sin(t * 0.00002) * 10;
+      var my = aH * 0.21 - Math.min(150, window.scrollY * 0.035);   // barely parallaxes: it is a long way off
+      var g = moon.ctx, size = moon.size;
+
+      // stamp the moon, then drag the cloud through it
+      g.clearRect(0, 0, size, size);
+      g.drawImage(moon.base, 0, 0);
+      g.globalCompositeOperation = 'destination-out';
+      for(var i = 0; i < moon.clouds.length; i++){
+        var cl = moon.clouds[i];
+        cl.x += (cl.sp + wind * 0.06) * (dt / 16);
+        if(cl.x - cl.r > size * 1.4){ cl.x = -size * 0.6; cl.y = rand(size * 0.18, size * 0.82); }
+        punch(g, cl.x, cl.y, cl.r, cl.a);
+      }
+      g.globalCompositeOperation = 'source-over';
+
+      // the halo it throws into the wet air, and the lightning's share of it
+      var lit = 1 + flash * 3.2;
+      var hal = ac.createRadialGradient(mx, my, moon.r * 0.5, mx, my, moon.r * 7.5);
+      hal.addColorStop(0, 'rgba(196,218,255,' + (0.15 * lit).toFixed(3) + ')');
+      hal.addColorStop(0.28, 'rgba(160,192,255,' + (0.06 * lit).toFixed(3) + ')');
+      hal.addColorStop(1, 'rgba(120,160,255,0)');
+      ac.fillStyle = hal;
+      ac.beginPath(); ac.arc(mx, my, moon.r * 7.5, 0, Math.PI * 2); ac.fill();
+
+      // the cloud edges catch it from behind
+      for(i = 0; i < moon.clouds.length; i++){
+        var c2 = moon.clouds[i];
+        var gx = mx - size / 2 + c2.x, gy = my - size / 2 + c2.y;
+        var cg = ac.createRadialGradient(gx, gy, c2.r * 0.2, gx, gy, c2.r * 1.5);
+        cg.addColorStop(0, 'rgba(178,206,255,' + (0.05 * lit).toFixed(3) + ')');
+        cg.addColorStop(1, 'rgba(150,180,255,0)');
+        ac.fillStyle = cg;
+        ac.beginPath(); ac.arc(gx, gy, c2.r * 1.5, 0, Math.PI * 2); ac.fill();
+      }
+
+      ac.drawImage(moon.cvs, mx - size / 2, my - size / 2);
+    }
+
     function makeDrop(seeded){
       var z = rand(0.25, 1);
       return {
@@ -1168,6 +1287,7 @@
       var fn = Math.round(Math.min(9, aW / 190) * density);
       for(var q2 = 0; q2 < fn; q2++){ foreDrops.push(makeForeDrop(true)); }
       glass = [];
+      buildMoon();
       sparkPalette();
       sparks = [];
       var kn = Math.round(Math.min(110, (aW * aH) / 11000) * density);
@@ -1191,6 +1311,9 @@
       var shift = Math.max(-90, Math.min(90, dy));
 
       var i, p, k, a;
+
+      /* --- furthest thing in the sky, so it goes down first --- */
+      drawMoon(t, dt, lastFlash);
 
       /* --- dust: blown sideways, sinking slowly, parallaxed by depth --- */
       for(i = 0; i < dust.length; i++){
@@ -1333,6 +1456,7 @@
       }
       // the same light, but over the top of the city rather than behind it
       if(flashEl){ flashEl.style.opacity = (flash * 0.55).toFixed(3); }
+      lastFlash = flash;
 
       /* --- droplets caught on the glass: they cling, then run down --- */
       if(glass.length < (coarse ? 5 : 11) && Math.random() < 0.02){ glass.push(makeGlass()); }
