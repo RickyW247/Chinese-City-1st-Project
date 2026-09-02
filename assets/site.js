@@ -361,6 +361,7 @@
   var TILT = 0.34;                    // how far each loop leans out of the page
   var LX = -0.55, LY = -0.84;         // light, from the upper left
   var GIRTH = 1;                      // body scale, from the width of the page
+  var strokeGirth = -1;               // the GIRTH the band stroke widths were sized for
   var band = [];                      // one set of paths per depth band
   var headBi = 0;                     // the depth band the head is painted in
   var dgHead;
@@ -672,22 +673,42 @@
                    (sx + s.tx * s.w * .5).toFixed(1) + ' ' + (sy + s.ty * s.w * .5).toFixed(1) + ' ';
     });
 
+    /* Writing an attribute costs whether or not it changed anything, and most
+       of these do not change: bands with nothing in view hold the same empty
+       string frame after frame. Only touch the ones that actually moved. */
     for(var m = 0; m < BANDS; m++){
       var t2 = band[m];
-      t2.ao.setAttribute('d', ao[m]);
-      t2.body.setAttribute('d', body[m]);
-      t2.sh.setAttribute('d', sh[m]);
-      t2.hi.setAttribute('d', hi[m]);
-      t2.plate.setAttribute('d', plate[m]);
-      t2.spine.setAttribute('d', spine[m]);
-      t2.ring.setAttribute('d', ring[m]);
-      t2.rim.setAttribute('d', rim[m]);
-      t2.glow.setAttribute('d', rim[m]);
-      t2.glow.setAttribute('stroke-width', (6 + 16 * (m / (BANDS - 1))).toFixed(1));
-      t2.rim.setAttribute('stroke-width', (1.2 + 2.6 * (m / (BANDS - 1))).toFixed(1));
-      t2.limb.setAttribute('d', limb[m]);
-      t2.limb.setAttribute('stroke-width', ((2.2 + 4.4 * (m / (BANDS - 1))) * GIRTH).toFixed(1));
+      setD(t2.ao, ao[m]);
+      setD(t2.body, body[m]);
+      setD(t2.sh, sh[m]);
+      setD(t2.hi, hi[m]);
+      setD(t2.plate, plate[m]);
+      setD(t2.spine, spine[m]);
+      setD(t2.ring, ring[m]);
+      setD(t2.rim, rim[m]);
+      setD(t2.glow, rim[m]);
+      setD(t2.limb, limb[m]);
     }
+
+    /* Stroke widths ride on the band and the page width alone, so re-setting
+       all thirty of them every frame changed nothing thirty times. Re-apply
+       only when the width has actually moved. */
+    if(GIRTH !== strokeGirth){
+      strokeGirth = GIRTH;
+      for(var w2 = 0; w2 < BANDS; w2++){
+        var t3 = band[w2], f2 = w2 / (BANDS - 1);
+        t3.glow.setAttribute('stroke-width', (6 + 16 * f2).toFixed(1));
+        t3.rim.setAttribute('stroke-width', (1.2 + 2.6 * f2).toFixed(1));
+        t3.limb.setAttribute('stroke-width', ((2.2 + 4.4 * f2) * GIRTH).toFixed(1));
+      }
+    }
+  }
+
+  /* the last string we handed each path, so an unchanged one is left alone */
+  function setD(el, d){
+    if(el.__d === d) return;
+    el.__d = d;
+    el.setAttribute('d', d);
   }
 
   function buildDragon(){
@@ -746,6 +767,21 @@
     dgHead.setAttribute('opacity', (0.5 + 0.5 * near).toFixed(3));
   }
 
+  /* The coil is the expensive thing on the page to rebuild, and while you
+     scrolled it was being rebuilt twice a frame: the drift loop and the scroll
+     rebuild both land in the same frame and neither knew about the other.
+     Key it on the frame's own timestamp, which requestAnimationFrame hands to
+     both, so whichever arrives first does the work and the other rides along.
+     Nothing is skipped — phase is cumulative, so a drift that finds the frame
+     already built simply shows up in the next one. */
+  var builtAt = -1;
+  function rebuildCoil(now){
+    if(now === builtAt) return;
+    builtAt = now;
+    geometry(phase);
+    positionHead();
+  }
+
   /* slow flight: the coil keeps drifting even when the page is still */
   var driftLast = 0;
   /* A phone was the reason this was ever rationed, but the test used to be
@@ -761,8 +797,7 @@
     if(dt >= DRIFT_GAP){
       driftLast = now;
       phase += 0.00021 * Math.min(90, dt);        // time-based, not per-tick
-      geometry(phase);
-      positionHead();
+      rebuildCoil(now);
     }
     requestAnimationFrame(driftLoop);
   }
@@ -770,19 +805,15 @@
   /* scrolling changes which slice of the coil is on screen, so rebuild —
      once per frame at most, however many scroll events arrive */
   var scrollPending = false;
-  function scrollRebuild(){
+  function scrollRebuild(now){
     scrollPending = false;
     panViewBox();
-    geometry(phase);
-    positionHead();
+    rebuildCoil(now);
   }
 
   /* ---------- scroll ---------- */
   var heroMedia = $('#heroMedia');
-  var lastFrac = 0;
   function onScroll(){
-    var max = document.documentElement.scrollHeight - innerHeight;
-    lastFrac = max > 0 ? Math.min(1, Math.max(0, scrollY / max)) : 0;
     if(svg){
       panViewBox();
       if(!scrollPending){ scrollPending = true; requestAnimationFrame(scrollRebuild); }
@@ -870,7 +901,18 @@
     ctx = canvas.getContext('2d');
     sizeRain();
     if(reduceMotion){ canvas.style.display = 'none'; }
-    else { (function rainLoop(t){ drawRain(t||0); requestAnimationFrame(rainLoop); })(); }
+    else {
+      /* This canvas lives inside the hero, which is the top screen of the
+         page — scroll past it and there is nothing of it left to see. It was
+         still drawing every drop every frame the whole way down, and carrying
+         on in a background tab. Keep the loop alive so it picks straight back
+         up, but skip the work while none of it can be seen. */
+      (function rainLoop(t){
+        requestAnimationFrame(rainLoop);
+        if(document.hidden || scrollY >= H) return;
+        drawRain(t || 0);
+      })();
+    }
   }
 
   /* ---------- annotated plate (home) ---------- */
