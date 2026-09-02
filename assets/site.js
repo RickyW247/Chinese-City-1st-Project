@@ -362,6 +362,7 @@
   var LX = -0.55, LY = -0.84;         // light, from the upper left
   var GIRTH = 1;                      // body scale, from the width of the page
   var band = [];                      // one set of paths per depth band
+  var headBi = 0;                     // the depth band the head is painted in
   var dgHead;
 
   /* ---- colour helpers: the palette is mixed from the page's own accents ---- */
@@ -537,18 +538,19 @@
     var margin = 500 + Math.min(DW * 0.40, 560) * TILT;
     var kFrom = Math.max(0, Math.floor(((scrollY - margin) / DH) * N));
     var kTo = Math.min(N - 1, Math.ceil(((scrollY + innerHeight + margin) / DH) * N));
-    // The neck runs into the head rather than up to it. Tapering only to 55%
-    // left a full slab of body sitting exactly where the face is, and once the
-    // depth rounding put that slab a band nearer than the head it painted
-    // straight over the muzzle. Taper it to nothing instead: the head's own
-    // artwork covers the join, and there is no longer anything there to cross.
+    // the neck: the last stretch of body before the head, thinning into it
     var kHead = Math.min(N, Math.round(headFrac() * N));
     kTo = Math.min(kTo, kHead);
-    var NECK = 7;
+    var NECK = 5;
     for(var n2 = Math.max(0, kHead - NECK); n2 <= kHead && n2 <= N; n2++){
       var g2 = (kHead - n2) / NECK;                   // 0 at the head, 1 back along the body
-      samples[n2].w *= g2 * g2 * (3 - 2 * g2);        // smooth, and truly zero at the head
+      samples[n2].w *= 0.55 + 0.45 * g2;
     }
+    /* Which band the head lands in. The neck is held to it below and
+       positionHead paints the head into it, so the two cannot disagree about
+       where the join sits. */
+    var hs = samples[Math.min(N, kHead)] || samples[N];
+    headBi = Math.max(0, Math.min(BANDS - 1, Math.round((hs.depth + 1) / 2 * (BANDS - 1))));
 
     var ao = [], body = [], hi = [], sh = [], plate = [], spine = [], ring = [], rim = [], limb = [];
     for(var q = 0; q < BANDS; q++){ ao[q] = ''; body[q] = ''; hi[q] = ''; sh[q] = ''; plate[q] = ''; spine[q] = ''; ring[q] = ''; rim[q] = ''; limb[q] = ''; }
@@ -578,6 +580,12 @@
       if(!e) break;
       var dep = (s.depth + e.depth) / 2;
       var bi = Math.max(0, Math.min(BANDS - 1, Math.round((dep + 1) / 2 * (BANDS - 1))));
+      /* Every quad picks its band from its own depth, and the neck sits at
+         almost exactly the head's depth — so the rounding sends the last slab
+         of body a band in front of the head about as often as behind it, and
+         when it goes in front it paints straight across the face. The neck
+         joins the head; it can never be in front of it. Hold it back. */
+      if(k >= kHead - NECK && bi > headBi) bi = headBi;
 
       body[bi] += quad(s, e, 1.02);                     // slight overlap hides the seams
       if(s.w > 2.5){
@@ -727,14 +735,13 @@
       'translate(' + x.toFixed(1) + ',' + y.toFixed(1) + ') rotate(' + ang.toFixed(1) + ')' +
       ' scale(' + scale.toFixed(2) + ',' + (scale * roll).toFixed(2) + ')');
 
-    // The head sits at its own depth, so a coil that genuinely loops round in
+    // The head sits at its own depth, so a coil genuinely looping round in
     // front of it still passes over — an animal wound through itself has to
-    // hide its own head sometimes, or it stops reading as one body. What must
-    // never happen is the neck painting over the face, and that is dealt with
-    // where the body is built: the last stretch now tapers to nothing, so
-    // there is no slab of neck left at the muzzle to be ordered against.
+    // hide its own head sometimes, or it stops reading as one body. Its own
+    // neck is the one thing that never can: geometry holds those quads back
+    // to this same band, and within a band the head is appended last.
     var near = (depth + 1) / 2;
-    var bi = Math.max(0, Math.min(BANDS - 1, Math.round(near * (BANDS - 1))));
+    var bi = headBi;
     if(dgHead.parentNode !== band[bi].group){ band[bi].group.appendChild(dgHead); }
     dgHead.setAttribute('opacity', (0.5 + 0.5 * near).toFixed(3));
   }
