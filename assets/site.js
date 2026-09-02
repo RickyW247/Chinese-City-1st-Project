@@ -759,10 +759,17 @@
 
   /* slow flight: the coil keeps drifting even when the page is still */
   var driftLast = 0;
+  /* A phone was the reason this was ever rationed, but the test used to be
+     `pointer:coarse` — which is every touch device — so tablets lost the
+     dragon's flight altogether despite drawing it comfortably. Ration the
+     frames instead of withholding them: a small screen gets a longer gap
+     between rebuilds, anything larger gets the full rate. Rotation cannot
+     change the answer, since the short side is the short side either way. */
+  var DRIFT_GAP = (coarse && Math.min(innerWidth, innerHeight) < 600) ? 52 : 26;
   function driftLoop(now){
     if(!driftLast){ driftLast = now; }
     var dt = now - driftLast;
-    if(dt >= 26){
+    if(dt >= DRIFT_GAP){
       driftLast = now;
       phase += 0.00021 * Math.min(90, dt);        // time-based, not per-tick
       geometry(phase);
@@ -807,7 +814,7 @@
   });
   buildDragon();
   if(document.fonts && document.fonts.ready){ document.fonts.ready.then(function(){ buildDragon(); onScroll(); }); }
-  if(!reduceMotion && !coarse){ requestAnimationFrame(driftLoop); }
+  if(!reduceMotion){ requestAnimationFrame(driftLoop); }
   onScroll();
 
   /* ---------- HUD clock ---------- */
