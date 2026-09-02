@@ -361,8 +361,6 @@
   var TILT = 0.34;                    // how far each loop leans out of the page
   var LX = -0.55, LY = -0.84;         // light, from the upper left
   var GIRTH = 1;                      // body scale, from the width of the page
-  var headBand = -1;                  // which depth band the head is painted in
-  var neckBand = 0;                   // frontmost band the neck itself lands in
   var band = [];                      // one set of paths per depth band
   var dgHead;
 
@@ -480,7 +478,6 @@
       var g = $('#dgB' + j);
       band.push({
         group: g,
-        appendHead: function(h){ if(h.parentNode !== this.group) this.group.appendChild(h); },
         ao:    g.querySelector('.dgAo'),
         body:  g.querySelector('.dgBody'),
         sh:    g.querySelector('.dgSh'),
@@ -494,7 +491,6 @@
       });
     }
     dgHead = $('#dgHead');
-    headBand = -1;
     dgHead.innerHTML = headMarkup(PAL);
   }
 
@@ -545,12 +541,9 @@
     var kHead = Math.min(N, Math.round(headFrac() * N));
     kTo = Math.min(kTo, kHead);
     var NECK = 5;
-    neckBand = 0;
     for(var n2 = Math.max(0, kHead - NECK); n2 <= kHead && n2 <= N; n2++){
       var g2 = (kHead - n2) / NECK;                   // 0 at the head, 1 back along the body
       samples[n2].w *= 0.55 + 0.45 * g2;
-      var nb = Math.round((samples[n2].depth + 1) / 2 * (BANDS - 1));
-      if(nb > neckBand) neckBand = nb;
     }
 
     var ao = [], body = [], hi = [], sh = [], plate = [], spine = [], ring = [], rim = [], limb = [];
@@ -730,30 +723,17 @@
       'translate(' + x.toFixed(1) + ',' + y.toFixed(1) + ') rotate(' + ang.toFixed(1) + ')' +
       ' scale(' + scale.toFixed(2) + ',' + (scale * roll).toFixed(2) + ')');
 
-    // Order it against the neck, not against its own depth. The head has to
-    // beat every band its own artwork overlaps — the mane and horns reach a
-    // long way back along the body, and any of that stretch sitting in a
-    // nearer band was painting over the face. So: walk back along the coil as
-    // far as the head actually covers, and take the frontmost band found.
+    // The head is painted after every band, so no part of the body can cover
+    // its face. It used to be slotted into the band matching its own depth,
+    // but a band is a bucket: whatever coil landed one bucket nearer painted
+    // straight over the muzzle, and at some scroll positions swallowed the
+    // head whole, leaving whiskers poking out of the body. Walking back along
+    // the neck to find a frontmost band did not help — measured over 28
+    // scroll positions it only took the head from covered at 11 to 10, since
+    // what covers it is rarely the neck in arc length. So stop ordering it
+    // against the body at all, and let scale and this dimming carry the depth.
     var near = (depth + 1) / 2;
-    var own = Math.max(0, Math.min(BANDS - 1, Math.round(near * (BANDS - 1))));
-    var bi = neckBand > own ? neckBand : own;
-    var reach = 36 * scale;                        // px of body the head covers
-    var walked = 0, k = i0, prev = s0, steps = 0;
-    while(k > 0 && walked < reach && steps < 48){
-      var q = samples[--k]; steps++;
-      walked += Math.hypot(prev.x - q.x, prev.y - q.y);
-      prev = q;
-      var qb = Math.round((q.depth + 1) / 2 * (BANDS - 1));
-      if(qb > bi) bi = qb;
-    }
-    // but never so far forward that it hops in front of unrelated coils
-    if(bi > own + 3) bi = own + 3;
-    if(bi > BANDS - 1) bi = BANDS - 1;
-    if(bi !== headBand){ headBand = bi; }
-    band[bi].appendHead(dgHead);
-    // it dims round the back, but never all the way out — the coils in front
-    // of it are what hide it
+    if(dgHead.parentNode !== svg){ svg.appendChild(dgHead); }
     dgHead.setAttribute('opacity', (0.5 + 0.5 * near).toFixed(3));
   }
 
