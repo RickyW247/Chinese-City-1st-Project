@@ -537,13 +537,17 @@
     var margin = 500 + Math.min(DW * 0.40, 560) * TILT;
     var kFrom = Math.max(0, Math.floor(((scrollY - margin) / DH) * N));
     var kTo = Math.min(N - 1, Math.ceil(((scrollY + innerHeight + margin) / DH) * N));
-    // the neck: the last stretch of body before the head, thinning into it
+    // The neck runs into the head rather than up to it. Tapering only to 55%
+    // left a full slab of body sitting exactly where the face is, and once the
+    // depth rounding put that slab a band nearer than the head it painted
+    // straight over the muzzle. Taper it to nothing instead: the head's own
+    // artwork covers the join, and there is no longer anything there to cross.
     var kHead = Math.min(N, Math.round(headFrac() * N));
     kTo = Math.min(kTo, kHead);
-    var NECK = 5;
+    var NECK = 7;
     for(var n2 = Math.max(0, kHead - NECK); n2 <= kHead && n2 <= N; n2++){
       var g2 = (kHead - n2) / NECK;                   // 0 at the head, 1 back along the body
-      samples[n2].w *= 0.55 + 0.45 * g2;
+      samples[n2].w *= g2 * g2 * (3 - 2 * g2);        // smooth, and truly zero at the head
     }
 
     var ao = [], body = [], hi = [], sh = [], plate = [], spine = [], ring = [], rim = [], limb = [];
@@ -723,17 +727,15 @@
       'translate(' + x.toFixed(1) + ',' + y.toFixed(1) + ') rotate(' + ang.toFixed(1) + ')' +
       ' scale(' + scale.toFixed(2) + ',' + (scale * roll).toFixed(2) + ')');
 
-    // The head is painted after every band, so no part of the body can cover
-    // its face. It used to be slotted into the band matching its own depth,
-    // but a band is a bucket: whatever coil landed one bucket nearer painted
-    // straight over the muzzle, and at some scroll positions swallowed the
-    // head whole, leaving whiskers poking out of the body. Walking back along
-    // the neck to find a frontmost band did not help — measured over 28
-    // scroll positions it only took the head from covered at 11 to 10, since
-    // what covers it is rarely the neck in arc length. So stop ordering it
-    // against the body at all, and let scale and this dimming carry the depth.
+    // The head sits at its own depth, so a coil that genuinely loops round in
+    // front of it still passes over — an animal wound through itself has to
+    // hide its own head sometimes, or it stops reading as one body. What must
+    // never happen is the neck painting over the face, and that is dealt with
+    // where the body is built: the last stretch now tapers to nothing, so
+    // there is no slab of neck left at the muzzle to be ordered against.
     var near = (depth + 1) / 2;
-    if(dgHead.parentNode !== svg){ svg.appendChild(dgHead); }
+    var bi = Math.max(0, Math.min(BANDS - 1, Math.round(near * (BANDS - 1))));
+    if(dgHead.parentNode !== band[bi].group){ band[bi].group.appendChild(dgHead); }
     dgHead.setAttribute('opacity', (0.5 + 0.5 * near).toFixed(3));
   }
 
