@@ -1634,6 +1634,13 @@
       ];
     }
 
+    /* The home page hangs six big cards over this layer, so a charm is only
+       ever glimpsed in the gaps between them. Every other page leaves the same
+       geometry in open night, where it reads far heavier for no extra pixels —
+       so cut them down there, and the whole site lands at the weight the home
+       page set. */
+    var CHARM_SCALE = $('.districts .card') ? 1 : 0.62;
+
     function makeCharm(seeded){
       var z = srand(0.5, 1.25);                 // depth; larger is further off
       return {
@@ -1642,7 +1649,7 @@
         x: srand(sW * 0.05, sW * 0.95),
         y: seeded ? srand(-sH * 0.1, sH * 1.1) : srand(sH + 80, sH + 420),
         z: z,
-        size: srand(19, 44) / z,
+        size: srand(19, 44) * CHARM_SCALE / z,
         rx: srand(0, 6.28), ry: srand(0, 6.28), rz: srand(0, 6.28),
         vrx: srand(-0.24, 0.24),
         vry: srand(0.18, 0.5) * (Math.random() < 0.5 ? -1 : 1),
