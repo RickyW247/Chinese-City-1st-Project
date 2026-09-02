@@ -269,6 +269,7 @@
     $$('.ticker-track', clone).forEach(function(n){ n.innerHTML = ''; });
     var drg = $('#dragon', clone); if(drg){ drg.innerHTML = '<path id="dragonPath"/><g id="dragonHead"></g>'; drg.removeAttribute('viewBox'); drg.removeAttribute('style'); }
     var amb = $('#ambient', clone); if(amb){ amb.removeAttribute('width'); amb.removeAttribute('height'); amb.removeAttribute('style'); }
+    var shy = $('#shinies', clone); if(shy){ shy.remove(); }   // site.js hangs this one itself
     var rain = $('#heroRain', clone); if(rain){ rain.removeAttribute('width'); rain.removeAttribute('height'); rain.removeAttribute('style'); }
     var hero = $('#heroMedia', clone); if(hero){ hero.removeAttribute('style'); }
     var clock = $('#hudTime', clone); if(clock){ clock.textContent = '--:--:--'; }
