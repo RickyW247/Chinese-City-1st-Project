@@ -361,6 +361,7 @@
   var TILT = 0.34;                    // how far each loop leans out of the page
   var LX = -0.55, LY = -0.84;         // light, from the upper left
   var GIRTH = 1;                      // body scale, from the width of the page
+  var COIL = 0.80;                    // how much of the page the animal takes up
   var strokeGirth = -1;               // the GIRTH the band stroke widths were sized for
   var band = [];                      // one set of paths per depth band
   var headBi = 0;                     // the depth band the head is painted in
@@ -503,8 +504,10 @@
   function geometry(ph){
     samples = [];
     var cxp = DW / 2;
-    var amp = Math.min(DW * 0.40, 560);
-    GIRTH = Math.max(0.8, Math.min(1.7, DW / 1150));
+    /* Sweep and girth are scaled by the same number, so the dragon only ever
+       changes size — never its proportions. */
+    var amp = Math.min(DW * 0.40, 560) * COIL;
+    GIRTH = Math.max(0.8, Math.min(1.7, DW / 1150)) * COIL;
     for(var i = 0; i <= N; i++){
       var t = i / N;
       var ang = t * turns * Math.PI * 2 + ph;
@@ -536,7 +539,7 @@
     // only build the slice of the coil that is on screen — the layer is one
     // viewport tall, so the rest would never be painted. The lean pushes a
     // loop up to amp*TILT off its nominal y, so the margin has to cover it.
-    var margin = 500 + Math.min(DW * 0.40, 560) * TILT;
+    var margin = 500 + amp * TILT;
     var kFrom = Math.max(0, Math.floor(((scrollY - margin) / DH) * N));
     var kTo = Math.min(N - 1, Math.ceil(((scrollY + innerHeight + margin) / DH) * N));
     // the neck: the last stretch of body before the head, thinning into it
