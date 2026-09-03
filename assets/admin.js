@@ -243,7 +243,7 @@
 
   /* strip everything the editor or site.js injected */
   function cleanHTML(node){
-    $$('.fc-tools, .fc-add, .cube-wrap, .pin, .plate-nav button, .nav-drop, .fc-bar, .fc-modal, .account', node)
+    $$('.fc-tools, .fc-add, .pin, .plate-nav button, .nav-drop, .fc-bar, .fc-modal, .account', node)
       .forEach(function(n){ n.remove(); });
     $$('[contenteditable]', node).forEach(function(n){ n.removeAttribute('contenteditable'); });
     $$('[data-fc-edit]', node).forEach(function(n){ n.removeAttribute('data-fc-edit'); });
@@ -263,13 +263,12 @@
     var clone = document.documentElement.cloneNode(true);
 
     // drop editor + runtime artefacts entirely
-    $$('.fc-bar, .fc-modal, .account, .fc-tools, .fc-add, .cube-wrap, .pin, .nav-drop', clone)
+    $$('.fc-bar, .fc-modal, .account, .fc-tools, .fc-add, .pin, .nav-drop', clone)
       .forEach(function(n){ n.remove(); });
     $$('.plate-nav', clone).forEach(function(n){ n.innerHTML = ''; });
     $$('.ticker-track', clone).forEach(function(n){ n.innerHTML = ''; });
     var drg = $('#dragon', clone); if(drg){ drg.innerHTML = '<path id="dragonPath"/><g id="dragonHead"></g>'; drg.removeAttribute('viewBox'); drg.removeAttribute('style'); }
     var amb = $('#ambient', clone); if(amb){ amb.removeAttribute('width'); amb.removeAttribute('height'); amb.removeAttribute('style'); }
-    var shy = $('#shinies', clone); if(shy){ shy.remove(); }   // site.js hangs this one itself
     var rain = $('#heroRain', clone); if(rain){ rain.removeAttribute('width'); rain.removeAttribute('height'); rain.removeAttribute('style'); }
     var hero = $('#heroMedia', clone); if(hero){ hero.removeAttribute('style'); }
     var clock = $('#hudTime', clone); if(clock){ clock.textContent = '--:--:--'; }

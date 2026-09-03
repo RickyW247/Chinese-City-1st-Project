@@ -93,17 +93,6 @@ img{ max-width:100%; display:block; }
   pointer-events:none; mix-blend-mode:screen;
 }
 
-/* ---------- scroll solids: cut charms that wake on the way down ---------- */
-/* Above the dragon, below the type. Screen blending is what makes them read
-   as polished rather than pasted on: the lit facets add their light to the
-   night behind them and the unlit ones simply are the night. */
-#shinies{
-  position:fixed; top:0; left:0; width:100%; height:100svh; z-index:1;
-  pointer-events:none; mix-blend-mode:screen;
-}
-@media (max-width:700px){ #shinies{ opacity:.62; } }
-@media (prefers-reduced-motion: reduce){ #shinies{ display:none; } }
-
 /* the lightning, carried over the top of everything rather than behind it */
 .storm-flash{
   position:fixed; inset:0; z-index:5; pointer-events:none; opacity:0;
@@ -904,66 +893,6 @@ h1.hero-title{ filter:drop-shadow(0 0 40px rgba(77,232,255,.28)); font-weight:90
 .enter h2{ font-weight:900; letter-spacing:-.035em; }
 .pn .nm{ font-weight:800; letter-spacing:-.02em; }
 .mark-hanzi{ text-shadow:0 0 70px currentColor; }
-
-/* ============================================================
-   3D SOLIDS ON CLICKABLE SURFACES
-   A real CSS-3D cube per card / prev-next block: six faces carrying
-   the quarter's character, floating and spinning on its own axis.
-   ============================================================ */
-.cube-wrap{
-  position:absolute; pointer-events:none; z-index:2;
-  perspective:520px; perspective-origin:50% 50%;
-  animation:cubeFloat 7s ease-in-out infinite;
-}
-.card .cube-wrap{ top:22px; right:22px; width:58px; height:58px; --cs:58px; }
-.pn .cube-wrap{ top:50%; right:26px; margin-top:-26px; width:52px; height:52px; --cs:52px; }
-.pn.next .cube-wrap{ right:auto; left:26px; }
-
-.cube{
-  position:absolute; inset:0; transform-style:preserve-3d;
-  animation:cubeSpin 18s linear infinite;
-  opacity:.42; transition:opacity .45s ease;
-}
-.cube b{
-  position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-  font-family:var(--font-hanzi); font-weight:400; font-size:calc(var(--cs) * .52);
-  color:var(--accent); line-height:1;
-  border:1px solid color-mix(in srgb, var(--accent) 50%, transparent);
-  background:color-mix(in srgb, var(--accent) 7%, transparent);
-  box-shadow:inset 0 0 20px color-mix(in srgb, var(--accent) 16%, transparent);
-  backface-visibility:visible;
-}
-.cube b:nth-child(1){ transform:translateZ(calc(var(--cs) / 2)); }
-.cube b:nth-child(2){ transform:rotateY(180deg) translateZ(calc(var(--cs) / 2)); }
-.cube b:nth-child(3){ transform:rotateY(90deg)  translateZ(calc(var(--cs) / 2)); }
-.cube b:nth-child(4){ transform:rotateY(-90deg) translateZ(calc(var(--cs) / 2)); }
-.cube b:nth-child(5){ transform:rotateX(90deg)  translateZ(calc(var(--cs) / 2)); }
-.cube b:nth-child(6){ transform:rotateX(-90deg) translateZ(calc(var(--cs) / 2)); }
-
-@keyframes cubeSpin{
-  0%{   transform:rotateX(-18deg) rotateY(0deg)   rotateZ(0deg); }
-  100%{ transform:rotateX(342deg) rotateY(720deg) rotateZ(360deg); }
-}
-@keyframes cubeFloat{
-  0%,100%{ transform:translateY(-5px); }
-  50%{     transform:translateY(7px); }
-}
-
-/* it wakes up when you point at the thing it belongs to */
-.card:hover .cube, .card:focus-visible .cube,
-.pn:hover .cube,   .pn:focus-visible .cube{ opacity:.92; animation-duration:5s; }
-.card:hover .cube b, .pn:hover .cube b{
-  border-color:color-mix(in srgb, var(--accent) 85%, transparent);
-  background:color-mix(in srgb, var(--accent) 13%, transparent);
-}
-
-@media (prefers-reduced-motion: reduce){
-  .cube, .cube-wrap{ animation:none; }
-  .cube{ transform:rotateX(-18deg) rotateY(32deg); opacity:.5; }
-}
-@media (max-width:620px){
-  .card .cube-wrap{ width:46px; height:46px; --cs:46px; top:18px; right:18px; }
-}
 
 
 /* ============================================================

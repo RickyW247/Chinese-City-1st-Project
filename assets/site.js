@@ -240,35 +240,6 @@
   $$('.card').forEach(function(c){ tiltable(c, 7); });
   $$('.pn').forEach(function(p){ tiltable(p, 4.5); });
 
-  /* ---------- a spinning 3D cube on every clickable quarter ---------- */
-  function mountCube(host, glyph){
-    if(!host || !glyph || $('.cube-wrap', host)) return;
-    var wrap = document.createElement('span');
-    wrap.className = 'cube-wrap';
-    wrap.setAttribute('aria-hidden', 'true');
-    var cube = document.createElement('span');
-    cube.className = 'cube';
-    for(var i = 0; i < 6; i++){
-      var face = document.createElement('b');
-      face.textContent = glyph;
-      cube.appendChild(face);
-    }
-    wrap.appendChild(cube);
-    host.appendChild(wrap);
-    // stagger them so the grid doesn't pulse in lockstep
-    var off = (Math.random() * -14).toFixed(2) + 's';
-    cube.style.animationDelay = off;
-    wrap.style.animationDelay = (Math.random() * -7).toFixed(2) + 's';
-  }
-  $$('.card').forEach(function(c){
-    var g = $('.card-glyph', c);
-    mountCube(c, g ? g.textContent.trim() : '');
-  });
-  $$('.pn').forEach(function(p){
-    var g = $('.g', p);
-    mountCube(p, g ? g.textContent.trim() : '');
-  });
-
   /* ---------- the makers' photo ----------
      Whoever drops the picture in should not have to care whether their
      phone called it .jpg, .jpeg or .png — try the lot, then own up. */
@@ -1002,77 +973,13 @@
   if(amb && !reduceMotion){
     var ac = amb.getContext('2d');
     var aW = 0, aH = 0, aDPR = Math.min(1.75, window.devicePixelRatio || 1);
-    var dust = [], airDrops = [], glass = [], solids = [], sparks = [], foreDrops = [];
+    var dust = [], airDrops = [], glass = [], sparks = [], foreDrops = [];
 
-    /* --- wireframe polyhedra, rotated properly in three axes --- */
-    var SHAPES = {
-      cube: {
-        v: [[-1,-1,-1],[1,-1,-1],[1,1,-1],[-1,1,-1],[-1,-1,1],[1,-1,1],[1,1,1],[-1,1,1]],
-        e: [[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]]
-      },
-      octa: {
-        v: [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]],
-        e: [[0,2],[2,1],[1,3],[3,0],[0,4],[2,4],[1,4],[3,4],[0,5],[2,5],[1,5],[3,5]]
-      },
-      tetra: {
-        v: [[1,1,1],[-1,-1,1],[-1,1,-1],[1,-1,-1]],
-        e: [[0,1],[0,2],[0,3],[1,2],[1,3],[2,3]]
-      }
-    };
-    var SHAPE_KEYS = ['cube','octa','tetra'];
-
-    function makeSolid(seeded){
-      var z = rand(0.42, 1);
-      return {
-        shape: SHAPE_KEYS[(Math.random() * SHAPE_KEYS.length) | 0],
-        x: rand(0, aW), y: seeded ? rand(0, aH) : rand(aH + 60, aH + 220),
-        z: z,
-        size: rand(16, 40) / z,
-        rx: rand(0, 6.28), ry: rand(0, 6.28), rz: rand(0, 6.28),
-        vx: rand(-0.12, 0.12), vy: rand(-0.5, -0.14),
-        vrx: rand(-0.006, 0.006), vry: rand(-0.008, 0.008), vrz: rand(-0.004, 0.004),
-        warm: Math.random() > 0.6
-      };
-    }
-
-    function drawSolid(p){
-      var s = SHAPES[p.shape];
-      var cx = Math.cos(p.rx), sx = Math.sin(p.rx);
-      var cy = Math.cos(p.ry), sy = Math.sin(p.ry);
-      var cz = Math.cos(p.rz), sz = Math.sin(p.rz);
-      var f = 420, pts = [], i, v, x, y, zz, t;
-      for(i = 0; i < s.v.length; i++){
-        v = s.v[i];
-        x = v[0] * p.size; y = v[1] * p.size; zz = v[2] * p.size;
-        // X, then Y, then Z
-        t = y * cx - zz * sx; zz = y * sx + zz * cx; y = t;
-        t = x * cy + zz * sy; zz = -x * sy + zz * cy; x = t;
-        t = x * cz - y * sz; y = x * sz + y * cz; x = t;
-        var k = f / (f + zz + p.size * 1.6);        // perspective divide
-        pts.push([p.x + x * k, p.y + y * k, zz]);
-      }
-      var col = p.warm ? '245,190,140' : '150,215,255';
-      var base = 0.05 + 0.2 * (1 - p.z);
-      for(i = 0; i < s.e.length; i++){
-        var a = pts[s.e[i][0]], b = pts[s.e[i][1]];
-        // edges pointing away from the viewer sit further back and read fainter
-        var depth = (a[2] + b[2]) / (2 * p.size);
-        var alpha = base * (0.45 + 0.55 * ((depth + 1) / 2));
-        ac.strokeStyle = 'rgba(' + col + ',' + alpha.toFixed(3) + ')';
-        ac.lineWidth = Math.max(0.5, (1.5 / p.z) * 0.45 * (0.6 + 0.4 * ((depth + 1) / 2)));
-        ac.beginPath(); ac.moveTo(a[0], a[1]); ac.lineTo(b[0], b[1]); ac.stroke();
-      }
-      // vertex sparks
-      ac.fillStyle = 'rgba(' + col + ',' + (base * 1.5).toFixed(3) + ')';
-      for(i = 0; i < pts.length; i++){
-        ac.beginPath(); ac.arc(pts[i][0], pts[i][1], Math.max(0.7, 1.5 / p.z * 0.5), 0, Math.PI * 2); ac.fill();
-      }
-    }
     var wind = 0.25, windTarget = 0.25, windTimer = 0;
 
     /* The storm. Most strikes are somewhere behind the ridge — a sheet of
        light with no shape to it. Some are close enough to draw. */
-    var storm = { wait: 2600, t: 0, flashes: [], bolt: null };
+    var storm = { wait: 1500, t: 0, flashes: [], bolt: null };
     var lastFlash = 0;
     var flashEl = null;
     function makeBolt(){
@@ -1100,10 +1007,14 @@
       return { main: main, branches: branches };
     }
     function strike(){
-      var close = Math.random() < 0.42;
+      // more of them come near enough to draw, instead of staying a glow
+      // somewhere behind the ridge
+      var close = Math.random() < 0.58;
       storm.bolt = close ? makeBolt() : null;
       storm.flashes = [];
-      var n = 2 + (Math.random() * 3 | 0), at = 0;
+      // an extra beat in the flicker, so a strike reads as a rolling discharge
+      // rather than one blink
+      var n = 3 + (Math.random() * 3 | 0), at = 0;
       for(var i = 0; i < n; i++){
         at += rand(45, 200);
         storm.flashes.push({
@@ -1113,7 +1024,9 @@
         });
       }
       storm.t = 0;
-      storm.wait = rand(6500, 22000);
+      // it used to leave as long as 22 seconds between strikes, so on a page
+      // you scroll through in under a minute most visits saw one or none
+      storm.wait = rand(3000, 9500);
     }
     function strokeBolt(pts, w, col){
       ac.strokeStyle = col; ac.lineWidth = w; ac.lineCap = 'round'; ac.lineJoin = 'round';
@@ -1333,9 +1246,6 @@
       sparks = [];
       var kn = Math.round(Math.min(110, (aW * aH) / 11000) * density);
       for(var q = 0; q < kn; q++){ sparks.push(makeSpark(true)); }
-      solids = [];
-      var sn = coarse ? 3 : 7;
-      for(var s = 0; s < sn; s++){ solids.push(makeSolid(true)); }
     }
 
     function ambDraw(t){
@@ -1396,19 +1306,6 @@
         ac.stroke();
         ac.fillStyle = 'rgba(225,240,255,' + (da * 1.35).toFixed(3) + ')';
         ac.beginPath(); ac.arc(p.x + slant, p.y + L, Math.max(1, 1.9 * k * 0.55), 0, Math.PI * 2); ac.fill();
-      }
-
-      /* --- floating solids: drifting, tumbling, parallaxed by depth --- */
-      for(i = 0; i < solids.length; i++){
-        p = solids[i];
-        k = 1 / p.z;
-        p.rx += p.vrx; p.ry += p.vry; p.rz += p.vrz;
-        p.x += p.vx * k + wind * k * 0.25;
-        p.y += p.vy * k * 0.5 - shift * (k - 0.6) * 0.08;
-        if(p.y < -160){ solids[i] = makeSolid(false); continue; }
-        if(p.y > aH + 260){ p.y = -140; }
-        if(p.x < -120) p.x = aW + 110; else if(p.x > aW + 120) p.x = -110;
-        drawSolid(p);
       }
 
       /* --- glow dust, lifted and lit by the scroll --- */
@@ -1560,319 +1457,6 @@
     if(aW < 2){ (function retry(){ if(aW < 2){ ambSize(); requestAnimationFrame(retry); } })(); }
     aPrev = performance.now();
     ambRAF = requestAnimationFrame(ambLoop);
-  }
-
-  /* ============================================================
-     SCROLL SOLIDS
-     Cut charms hung in the shaft you descend as you read. They keep a
-     slow turn of their own, but the scroll is the winding key: every
-     pixel you travel adds twist and lifts them past you, and the twist
-     bleeds off again once you stop. They stay dark over the hero and
-     wake on the way down.
-     Unlike the dust behind them these have faces, not just edges —
-     lambert shading, a Blinn-Phong highlight, a lit rim and a flare off
-     whichever facet is currently pointed at the light — so they read as
-     polished stone catching the lantern grid rather than as wireframe.
-     ============================================================ */
-  if(!reduceMotion){
-    var shy = document.createElement('canvas');
-    shy.id = 'shinies';
-    shy.setAttribute('aria-hidden', 'true');
-    var afterEl = $('#dragon') || $('#ambient');
-    if(afterEl && afterEl.parentNode){ afterEl.parentNode.insertBefore(shy, afterEl.nextSibling); }
-    else { document.body.appendChild(shy); }
-
-    var sc = shy.getContext('2d');
-    var sW = 0, sH = 0, sDPR = Math.min(1.75, window.devicePixelRatio || 1);
-    var charms = [], TINTS = [];
-
-    function srand(a, b){ return a + Math.random() * (b - a); }
-    function clamp01(v){ return v < 0 ? 0 : (v > 1 ? 1 : v); }
-
-    /* --- the bodies, as vertices plus faces --- */
-    function crossOf(a, b, c){
-      var ux = b[0]-a[0], uy = b[1]-a[1], uz = b[2]-a[2];
-      var vx = c[0]-a[0], vy = c[1]-a[1], vz = c[2]-a[2];
-      return [uy*vz - uz*vy, uz*vx - ux*vz, ux*vy - uy*vx];
-    }
-    /* n-sided bipyramid: a girdle of n points with a point above and below.
-       n=4 gives a cut stone, n=6 a shard, n=8 something nearly turned. */
-    function bipyramid(n, h){
-      var v = [[0,-h,0],[0,h,0]], f = [], i, a;
-      for(i = 0; i < n; i++){
-        a = i / n * Math.PI * 2;
-        v.push([Math.cos(a), 0, Math.sin(a)]);
-      }
-      for(i = 0; i < n; i++){
-        f.push([0, 2 + i, 2 + (i + 1) % n]);
-        f.push([1, 2 + i, 2 + (i + 1) % n]);
-      }
-      return { v:v, f:f };
-    }
-    function icosa(){
-      var t = (1 + Math.sqrt(5)) / 2;
-      return {
-        v: [[-1,t,0],[1,t,0],[-1,-t,0],[1,-t,0],[0,-1,t],[0,1,t],
-            [0,-1,-t],[0,1,-t],[t,0,-1],[t,0,1],[-t,0,-1],[-t,0,1]],
-        f: [[0,11,5],[0,5,1],[0,1,7],[0,7,10],[0,10,11],
-            [1,5,9],[5,11,4],[11,10,2],[10,7,6],[7,1,8],
-            [3,9,4],[3,4,2],[3,2,6],[3,6,8],[3,8,9],
-            [4,9,5],[2,4,11],[6,2,10],[8,6,7],[9,8,1]]
-      };
-    }
-    /* Scale every body to one radius so the forms mix at a common size, and
-       wind every face so its normal points out of the body — done once here
-       rather than tested for on every face of every frame. Each body is
-       convex and centred on the origin, so "out" is simply "away from the
-       centre", and culling the back faces then leaves no overlap to sort. */
-    function prep(s){
-      var i, r = 0;
-      for(i = 0; i < s.v.length; i++){
-        r = Math.max(r, Math.sqrt(s.v[i][0]*s.v[i][0] + s.v[i][1]*s.v[i][1] + s.v[i][2]*s.v[i][2]));
-      }
-      for(i = 0; i < s.v.length; i++){
-        s.v[i] = [s.v[i][0]/r, s.v[i][1]/r, s.v[i][2]/r];
-      }
-      s.f.forEach(function(face){
-        var n = crossOf(s.v[face[0]], s.v[face[1]], s.v[face[2]]);
-        var cx = 0, cy = 0, cz = 0;
-        face.forEach(function(k){ cx += s.v[k][0]; cy += s.v[k][1]; cz += s.v[k][2]; });
-        if(n[0]*cx + n[1]*cy + n[2]*cz < 0){ face.reverse(); }
-      });
-      return s;
-    }
-    var FORMS = {
-      gem:   prep(bipyramid(4, 1.45)),
-      shard: prep(bipyramid(6, 1.75)),
-      drum:  prep(bipyramid(8, 0.72)),
-      ingot: prep({
-        v: [[-1,-1,-1],[1,-1,-1],[1,1,-1],[-1,1,-1],[-1,-1,1],[1,-1,1],[1,1,1],[-1,1,1]],
-        f: [[0,1,2,3],[5,4,7,6],[4,5,1,0],[3,2,6,7],[4,0,3,7],[1,5,6,2]]
-      }),
-      orb:   prep(icosa())
-    };
-    var FORM_KEYS = ['gem','shard','drum','ingot','orb'];
-
-    /* one key light off the upper left, and the half vector it makes with a
-       viewer sitting straight out on +z */
-    var LIGHT = (function(){
-      var l = [-0.40, -0.62, 0.68], m = Math.sqrt(l[0]*l[0] + l[1]*l[1] + l[2]*l[2]);
-      return [l[0]/m, l[1]/m, l[2]/m];
-    })();
-    var HALF = (function(){
-      var h = [LIGHT[0], LIGHT[1], LIGHT[2] + 1], m = Math.sqrt(h[0]*h[0] + h[1]*h[1] + h[2]*h[2]);
-      return [h[0]/m, h[1]/m, h[2]/m];
-    })();
-    var DARK = [7, 10, 20], WHITE = [255, 255, 255];
-
-    /* the page's own palette, so each quarter's charms are that quarter's colour */
-    function charmPalette(){
-      return [
-        rgbOf(cssVar('--accent', '#4de8ff')),
-        rgbOf(cssVar('--accent-2', '#9a6bff')),
-        rgbOf(cssVar('--gold', '#f0b45c')),
-        rgbOf(cssVar('--jade', '#4ee8a5'))
-      ];
-    }
-
-    /* The home page hangs six big cards over this layer, so a charm is only
-       ever glimpsed in the gaps between them. Every other page leaves the same
-       geometry in open night, where it reads far heavier for no extra pixels —
-       so cut them down there, and the whole site lands at the weight the home
-       page set. */
-    var CHARM_SCALE = $('.districts .card') ? 1 : 0.62;
-
-    function makeCharm(seeded){
-      var z = srand(0.5, 1.25);                 // depth; larger is further off
-      return {
-        form: FORM_KEYS[(Math.random() * FORM_KEYS.length) | 0],
-        tint: TINTS[(Math.random() * TINTS.length) | 0] || [77,232,255],
-        x: srand(sW * 0.05, sW * 0.95),
-        y: seeded ? srand(-sH * 0.1, sH * 1.1) : srand(sH + 80, sH + 420),
-        z: z,
-        size: srand(19, 44) * CHARM_SCALE / z,
-        rx: srand(0, 6.28), ry: srand(0, 6.28), rz: srand(0, 6.28),
-        vrx: srand(-0.24, 0.24),
-        vry: srand(0.18, 0.5) * (Math.random() < 0.5 ? -1 : 1),
-        vrz: srand(-0.14, 0.14),
-        drift: srand(-8, 8),                    // px/s sideways
-        rise: srand(4, 15),                     // px/s of its own, so a still page still moves
-        par: (1.45 - z) * srand(0.34, 0.55),    // near things travel further per scrolled pixel
-        bob: srand(0, 6.28), bobRate: srand(0.3, 0.8)
-      };
-    }
-
-    function drawCharm(p, alpha){
-      var s = FORMS[p.form];
-      var cx = Math.cos(p.rx), sx = Math.sin(p.rx);
-      var cy = Math.cos(p.ry), sy = Math.sin(p.ry);
-      var cz = Math.cos(p.rz), sz = Math.sin(p.rz);
-      var f = 460, i, j, v, x, y, zz, t, k;
-      var view = [], flat = [];
-
-      for(i = 0; i < s.v.length; i++){
-        v = s.v[i];
-        x = v[0] * p.size; y = v[1] * p.size; zz = v[2] * p.size;
-        // X, then Y, then Z
-        t = y * cx - zz * sx; zz = y * sx + zz * cx; y = t;
-        t = x * cy + zz * sy; zz = -x * sy + zz * cy; x = t;
-        t = x * cz - y * sz; y = x * sz + y * cz; x = t;
-        view.push([x, y, zz]);
-        k = f / (f + zz + p.size * 1.7);        // perspective divide
-        flat.push([p.x + x * k, p.y + y * k]);
-      }
-
-      // the light it is sitting in, before the body itself
-      var halo = sc.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size * 2.5);
-      halo.addColorStop(0, rgba(p.tint, alpha * 0.15));
-      halo.addColorStop(1, rgba(p.tint, 0));
-      sc.fillStyle = halo;
-      sc.beginPath(); sc.arc(p.x, p.y, p.size * 2.5, 0, Math.PI * 2); sc.fill();
-
-      var glintX = 0, glintY = 0, glintPow = 0;
-
-      for(i = 0; i < s.f.length; i++){
-        var face = s.f[i];
-        var a = view[face[0]], b = view[face[1]], c = view[face[2]];
-        var ux = b[0]-a[0], uy = b[1]-a[1], uz = b[2]-a[2];
-        var vx = c[0]-a[0], vy = c[1]-a[1], vz = c[2]-a[2];
-        var nx = uy*vz - uz*vy, ny = uz*vx - ux*vz, nz = ux*vy - uy*vx;
-        var nl = Math.sqrt(nx*nx + ny*ny + nz*nz) || 1;
-        nx /= nl; ny /= nl; nz /= nl;
-        if(nz <= 0.02) continue;                // facing away: nothing to draw
-
-        var lam  = Math.max(0, nx*LIGHT[0] + ny*LIGHT[1] + nz*LIGHT[2]);
-        var spec = Math.pow(Math.max(0, nx*HALF[0] + ny*HALF[1] + nz*HALF[2]), 34);
-        var rim  = Math.pow(1 - nz, 2.6) * 0.4;  // facets turned edge-on catch the rim light
-        var body = mix(DARK, p.tint, clamp01(0.14 + 0.62 * lam + rim));
-        var lit  = mix(body, WHITE, clamp01(spec * 0.9));
-
-        sc.beginPath();
-        sc.moveTo(flat[face[0]][0], flat[face[0]][1]);
-        for(j = 1; j < face.length; j++){ sc.lineTo(flat[face[j]][0], flat[face[j]][1]); }
-        sc.closePath();
-        sc.fillStyle = rgba(lit, alpha * clamp01(0.28 + 0.5 * lam + 0.5 * spec));
-        sc.fill();
-        // the cut edge reads brighter than either facet it divides
-        sc.strokeStyle = rgba(mix(p.tint, WHITE, 0.35), alpha * clamp01(0.15 + 0.45 * lam + spec));
-        sc.lineWidth = Math.max(0.6, p.size * 0.027);
-        sc.stroke();
-
-        if(spec > glintPow){
-          glintPow = spec;
-          glintX = 0; glintY = 0;
-          for(j = 0; j < face.length; j++){ glintX += flat[face[j]][0]; glintY += flat[face[j]][1]; }
-          glintX /= face.length; glintY /= face.length;
-        }
-      }
-
-      /* the flare off whichever facet is square to the light — the part that
-         actually says "polished" rather than "faceted" */
-      if(glintPow > 0.05){
-        var gr = p.size * (0.45 + glintPow * 1.4);
-        var g = sc.createRadialGradient(glintX, glintY, 0, glintX, glintY, gr);
-        g.addColorStop(0, rgba(WHITE, alpha * clamp01(glintPow * 1.1)));
-        g.addColorStop(0.35, rgba(mix(p.tint, WHITE, 0.6), alpha * glintPow * 0.4));
-        g.addColorStop(1, rgba(p.tint, 0));
-        sc.fillStyle = g;
-        sc.beginPath(); sc.arc(glintX, glintY, gr, 0, Math.PI * 2); sc.fill();
-        sc.strokeStyle = rgba(WHITE, alpha * glintPow * 0.5);
-        sc.lineWidth = Math.max(0.6, p.size * 0.028);
-        sc.beginPath();
-        sc.moveTo(glintX - gr, glintY);       sc.lineTo(glintX + gr, glintY);
-        sc.moveTo(glintX, glintY - gr * 0.75); sc.lineTo(glintX, glintY + gr * 0.75);
-        sc.stroke();
-      }
-    }
-
-    var sRAF = null, sPrev = 0, lastSY = window.scrollY, spin = 0, awake = false;
-
-    function shySize(){
-      sW = shy.clientWidth || window.innerWidth;
-      sH = shy.clientHeight || window.innerHeight;
-      shy.width  = Math.round(sW * sDPR);
-      shy.height = Math.round(sH * sDPR);
-      sc.setTransform(sDPR, 0, 0, sDPR, 0, 0);
-      TINTS = charmPalette();
-      var want = Math.max(5, Math.min(coarse ? 7 : 14, Math.round((sW * sH) / 132000)));
-      while(charms.length > want){ charms.pop(); }
-      while(charms.length < want){ charms.push(makeCharm(true)); }
-    }
-
-    function shyDraw(now){
-      var dt = Math.min(0.05, (now - sPrev) / 1000) || 0.016;
-      sPrev = now;
-
-      var y = window.scrollY, dy = y - lastSY;
-      lastSY = y;
-      /* An anchor link or an End key arrives as one enormous delta. Taken at
-         face value it would sweep the whole field off the top in a single
-         frame and leave the shaft empty until the charms drifted back, so
-         cap what any one frame is allowed to be worth. */
-      var pull = Math.max(-140, Math.min(140, dy));
-
-      /* dark over the hero, full a screen further down, and smoothstepped
-         between so they do not snap on */
-      var wake = clamp01((y - sH * 0.3) / (sH * 0.55));
-      wake = wake * wake * (3 - 2 * wake);
-
-      /* the scroll winds them: distance travelled becomes angular speed,
-         which then bleeds off at a rate that does not depend on frame rate */
-      spin = Math.min(6, spin + Math.abs(pull) * 0.02) * Math.exp(-2.4 * dt);
-
-      if(wake <= 0.004){
-        if(awake){ sc.clearRect(0, 0, sW, sH); awake = false; }
-        return;
-      }
-      awake = true;
-      sc.clearRect(0, 0, sW, sH);
-
-      var margin = 300;
-      for(var i = 0; i < charms.length; i++){
-        var p = charms[i];
-        var twist = 1 + spin * 2.2;
-        p.rx += p.vrx * twist * dt;
-        p.ry += p.vry * twist * dt;
-        p.rz += p.vrz * twist * dt;
-        p.bob += p.bobRate * dt;
-        p.x += (p.drift + Math.sin(p.bob) * 6) * dt;
-        p.y -= pull * p.par + p.rise * dt;
-
-        if(p.y < -margin){ charms[i] = p = makeCharm(false); }
-        else if(p.y > sH + margin){
-          charms[i] = p = makeCharm(false);
-          p.y = -srand(60, 320);
-        }
-        if(p.x < -margin){ p.x = sW + margin; }
-        else if(p.x > sW + margin){ p.x = -margin; }
-
-        drawCharm(p, wake);
-      }
-    }
-
-    function shyLoop(t){
-      if(document.hidden){ sRAF = null; return; }   // don't burn frames in a background tab
-      shyDraw(t || 0);
-      sRAF = requestAnimationFrame(shyLoop);
-    }
-    document.addEventListener('visibilitychange', function(){
-      if(!document.hidden && !sRAF){
-        sPrev = performance.now();
-        lastSY = window.scrollY;                     // no phantom spin from scrolling while away
-        sRAF = requestAnimationFrame(shyLoop);
-      }
-    });
-    var shyResize;
-    window.addEventListener('resize', function(){
-      clearTimeout(shyResize);
-      shyResize = setTimeout(shySize, 200);
-    });
-
-    shySize();
-    // keep retrying while layout reports nothing, so the field always seeds
-    if(sW < 2){ (function retry(){ if(sW < 2){ shySize(); requestAnimationFrame(retry); } })(); }
-    sPrev = performance.now();
-    sRAF = requestAnimationFrame(shyLoop);
   }
 
   /* ---------- ambient audio, carried across pages ---------- */
