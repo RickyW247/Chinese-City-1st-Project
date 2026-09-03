@@ -361,7 +361,7 @@
   var TILT = 0.34;                    // how far each loop leans out of the page
   var LX = -0.55, LY = -0.84;         // light, from the upper left
   var GIRTH = 1;                      // body scale, from the width of the page
-  var COIL = 0.80;                    // how much of the page the animal takes up
+  var COIL = 0.58;                    // how much of the page the animal takes up
   var strokeGirth = -1;               // the GIRTH the band stroke widths were sized for
   var band = [];                      // one set of paths per depth band
   var headBi = 0;                     // the depth band the head is painted in
