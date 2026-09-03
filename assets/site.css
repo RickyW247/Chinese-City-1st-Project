@@ -228,7 +228,7 @@ nav.topbar{
 /* ---------- home hero ---------- */
 .hero{ position:relative; height:100svh; min-height:620px; overflow:hidden; isolation:isolate; display:flex; align-items:flex-end; }
 .hero-media{ position:absolute; inset:-6% -2%; z-index:0; will-change:transform; }
-.hero-media img{ width:100%; height:100%; object-fit:cover; object-position:center 42%; filter:saturate(1.1) contrast(1.04); }
+.hero-media img{ width:100%; height:100%; object-fit:cover; object-position:center 42%; filter:saturate(1.1) contrast(1.04) url(#crisp); }
 .hero-rain{ position:absolute; inset:0; z-index:1; width:100%; height:100%; }
 .hero::after{
   content:""; position:absolute; inset:0; z-index:2; pointer-events:none;
@@ -287,7 +287,7 @@ h1.hero-title em{
 .subhero{ position:relative; min-height:min(76svh,720px); overflow:hidden; display:flex; align-items:flex-end; isolation:isolate; }
 .subhero-media{ position:absolute; inset:0; z-index:0; overflow:hidden; }
 .subhero-media img{
-  width:100%; height:100%; object-fit:cover; filter:saturate(1.05);
+  width:100%; height:100%; object-fit:cover; filter:saturate(1.05) url(#crisp);
   transform:scale(var(--sz,1.4)); transform-origin:var(--sx,50%) var(--sy,50%);
 }
 .subhero::after{

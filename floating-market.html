@@ -20,6 +20,14 @@
     <feGaussianBlur stdDeviation="4" result="blur"/>
     <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
   </filter>
+  <!-- The city art is 1536x1024 and every screen asks for more than that, so
+       the browser is always enlarging it. This is an unsharp mask to take the
+       edge off that: it puts no detail back, it just stops the detail that is
+       there from going soft on the way up. -->
+  <filter id="crisp" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+    <feConvolveMatrix order="3" preserveAlpha="true"
+      kernelMatrix="0 -0.35 0  -0.35 2.4 -0.35  0 -0.35 0"/>
+  </filter>
 </svg>
 
 <div class="loader" id="loader">
